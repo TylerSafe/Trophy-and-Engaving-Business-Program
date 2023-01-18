@@ -1,0 +1,97 @@
+def saveToCalendar(date, search_name, name):
+    if not os.path.exists(PATH + '\\Data\\Original\\calendar.xlsx'):
+        wb = Workbook()
+        wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
+        wb.close()
+
+
+    wb = load_workbook(PATH + '\\Data\\Original\\calendar.xlsx')
+    ws = wb['Sheet']
+    row = ws.max_row + 1
+    
+    ws.cell(column=1, row=row, value=date)
+    ws.cell(column=2, row=row, value=search_name)
+    ws.cell(column=3, row=row, value=name)
+
+    wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
+    wb.close()
+
+# clean up the date for easy sorting
+def cleanDate(date):
+    
+    if date is not None:
+        
+        if '/' in date[0:2]:
+            date = '0' + date
+                   
+        if '/' in date[3:5]:
+            date = date[0:3] + '0' + date[3:len(date)]
+
+        if len(date) == 8:
+            date = date[0:6] + '20' + date[6:8]
+
+        date = date.replace('/', '')
+
+        day = date[0:2]
+        month = date[2:4]
+        year = date[4:8]
+
+        return year + month + day
+    else:
+        date = '00000000'
+
+    return date
+
+# load details from excel file
+def loadCalendar(window):
+    if not os.path.exists(PATH + '\\Data\\Original\\calendar.xlsx'):
+        wb = Workbook()
+        wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
+        wb.close()
+
+    wb = load_workbook(PATH + '\\Data\\Original\\calendar.xlsx')
+    ws = wb['Sheet']
+    date = ws['A']
+    search_name = ws['B']
+    name = ws['C']
+
+    date1 = [date[x].value for x in range(len(name))]
+    del date1[0]  
+    search_name1 = [search_name[x].value for x in range(len(name))]
+    del search_name1[0]
+    name1 = [name[x].value for x in range(len(name))]
+    del name1[0]
+
+    date_fixed = []
+
+    for i in range(len(date1)):
+        date = cleanDate(date1[i])
+        date_fixed.append(date)
+
+    date_fixed, search_name1, name1 = (list(t) for t in zip(*sorted(zip(date_fixed, search_name1, name1))))
+
+    calendar_heading = Label(window, text = 'Calendar')
+    calendar_heading.config(font =("Courier bold", 18))
+    calendar_heading.place(x = 20, y = 10)
+    
+    heading = Label(window, text = 'No Required by Date')
+    heading.config(font =("Courier", 15))
+    heading.place(x = 20, y = 40)
+
+    for i in range(len(date_fixed)):
+        order_button = Button(window, width = 33, bg='#e1e5eb', text=name1[i], command = lambda: open_doc(search_name1[i], name1[i]))
+        order_button.place(x = 20, y = 50 + (i * 10))
+       
+    wb.close()
+
+def openCalendar():
+     
+    newWindow = Toplevel()
+
+    # Toplevel widget
+    newWindow.title("Calendar")
+ 
+    # sets the geometry of toplevel
+    newWindow.geometry("1000x500")
+
+    loadCalendar(newWindow)
