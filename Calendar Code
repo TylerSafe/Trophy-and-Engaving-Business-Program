@@ -10,6 +10,8 @@ def calenderPopUp():
     close_button = Button(newWindow, width = 10, bg='#e1e5eb', text='Ok', command = lambda: newWindow.destroy())
     close_button.place(x = 130, y = 57)
 
+    center(newWindow)
+
 def saveToCalendar(date, search_name, name, contact):
     
     if not os.path.exists(PATH + '\\Data\\Original\\calendar.xlsx'):
@@ -119,7 +121,7 @@ def loadCalendar(window, new_window):
 
     createLegend(window)
     
-    if date_fixed[0] == '00000000':
+    if date_fixed[0] == '00000000' or readableDate(date_fixed[0]) == 'incorrect date format':
         heading = Label(window, text = 'No Required by Date')
         heading.config(font =("Courier", 15))
         heading.place(x = 20, y = 70)
@@ -149,9 +151,12 @@ def loadCalendar(window, new_window):
 
         remove_contact = Button(window, width = 13, bg='#e1e5eb', text='Remove Contact', command = lambda i=i: editContact(new_window, search_name1[i], ws, wb, 'remove'))
         remove_contact.place(x = 570, y = 96 + (i * 26) + position)
+
+        change_date = Button(window, width = 10, bg='#e1e5eb', text='Change Date', command = lambda i=i: changeDate(new_window, search_name1[i], name1[i], ws, wb))
+        change_date.place(x = 680, y = 96 + (i * 26) + position)
         
         complete_button = Button(window, width = 10, bg='#e1e5eb', text='Complete', command = lambda i=i: removeOrder(new_window, search_name1[i], ws, wb))
-        complete_button.place(x = 680, y = 96 + (i * 26) + position)
+        complete_button.place(x = 770, y = 96 + (i * 26) + position)
         
         if contact1x[i] != None and contact1x[i] != ' ':
             setContact(window, contact1x[i], 23, 101 + (i * 26) + position)
@@ -162,7 +167,7 @@ def loadCalendar(window, new_window):
 
         window.configure(height=135 + (i * 26) + position)
         
-        if i != len(date_fixed) - 1 and date_fixed[i] != date_fixed[i + 1]:
+        if i != len(date_fixed) - 1 and date_fixed[i] != date_fixed[i + 1] and readableDate(date_fixed[i + 1]) != 'incorrect date format':
             heading = Label(window, text = readableDate(date_fixed[i + 1]))
             heading.config(font =("Courier", 15))
             position += 35
@@ -170,6 +175,89 @@ def loadCalendar(window, new_window):
             window.configure(height=135 + (i * 26) + position)
 
     wb.close()
+
+# edit word doc with the new required by date
+def changeRequired(search_name, name, date): 
+    try:
+
+        if search_name[0] == 'T':
+            path = PATH + '\\1. Job Sheets\\Trophy Jobsheets\\' + name + '\\' + search_name + '.docx'            
+    
+        elif search_name[0] == 'E':
+            path = PATH + '\\1. Job Sheets\\Engraving Jobsheets\\' + name + '\\' + search_name + '.docx'
+            
+        document = Document(path)
+
+        for paragraph in document.paragraphs:
+            if '    Required by: ' in paragraph.text:
+                paragraph.text = ''
+                paragraph.alignment = 1
+                paragraph.paragraph_format.space_before = Pt(1)
+                f7 = paragraph.add_run('    Required by: ')
+                font = f7.font
+                font.size = Pt(14)
+                f7.bold = True
+                f8 = paragraph.add_run(date)
+                font = f8.font
+                font.size = Pt(14)
+
+        document.save(path)
+    except:
+        excelError.config(text = 'No word document found')
+
+# center any windows that pop up on the screen
+def center(win):
+    """
+    centers a tkinter window
+    :param win: the main window or Toplevel window to center
+    """
+    win.update_idletasks()
+    width = win.winfo_width()
+    frm_width = win.winfo_rootx() - win.winfo_x()
+    win_width = width + 2 * frm_width
+    height = win.winfo_height()
+    titlebar_height = win.winfo_rooty() - win.winfo_y()
+    win_height = height + titlebar_height + frm_width
+    x = win.winfo_screenwidth() // 2 - win_width // 2
+    y = win.winfo_screenheight() // 2 - win_height // 2
+    win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
+    win.deiconify()  
+
+def changeDate(window, search_name, name, ws, wb):
+    newWindow = Toplevel()
+    newWindow.title("Change Date")
+    newWindow.geometry("460x110")
+
+    date_label = Label(newWindow, text = "New Required By Date (DD/MM/YYYY):")
+    date_label.config(font =("Courier", 15))
+    date_label.place(x = 20, y = 10)
+
+    date_entry = Entry(newWindow, width = 25)
+    date_entry.place(x = 145, y = 40)
+
+    submit_button = Button(newWindow, width = 10, bg='#e1e5eb', text='Submit', command = lambda: submitDate(window, newWindow, search_name, name, date_entry.get(), ws, wb))
+    submit_button.place(x = 185, y = 70)
+
+    center(newWindow)
+
+
+def submitDate(window, newWindow, search_name, name, date_entry, ws, wb):
+    row = ws.max_row
+    date = cleanDate(date_entry)
+    date_done = readableDate(date)
+        
+    for i in range(1, row + 1):
+        if ws.cell(column=2, row=i).value == search_name:
+            ws.cell(column=1, row=i, value=date_done)
+            break
+
+    wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
+
+    changeRequired(search_name, name, date_done)
+
+    newWindow.destroy()
+    window.destroy()
+    openCalendar()
 
 def editContact(new_window, name, ws, wb, type):
     # TO DO: if delete entry is 'other' have it remove whoever else is assigned
@@ -195,27 +283,30 @@ def editContact(new_window, name, ws, wb, type):
     else:
         submit_button = Button(newWindow, width = 10, bg='#e1e5eb', text='Submit', command = lambda: removeContact(new_window, name, contact_entry.get(), ws, wb, newWindow))
         submit_button.place(x = 197, y = 67)
+
+    center(newWindow)
     
 def removeContact(new_window, name, contact, ws, wb, window):
     row = ws.max_row
+    lowered = contact.lower()
     
     for i in range(1, row + 1):
         if ws.cell(column=2, row=i).value == name:
-            if ws.cell(column=5, row=i).value == contact:
+            if ws.cell(column=5, row=i).value == lowered:
                 ws.cell(column=5, row=i, value=' ')
                 wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
                 window.destroy()
                 new_window.destroy()
                 openCalendar()
                 return
-            elif ws.cell(column=6, row=i).value == contact:
+            elif ws.cell(column=6, row=i).value == lowered:
                 ws.cell(column=6, row=i, value=' ')
                 wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
                 window.destroy()
                 new_window.destroy()
                 openCalendar()
                 return
-            elif ws.cell(column=7, row=i).value == contact:
+            elif ws.cell(column=7, row=i).value == lowered:
                 ws.cell(column=7, row=i, value=' ')
                 wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
                 window.destroy()
@@ -227,25 +318,26 @@ def removeContact(new_window, name, contact, ws, wb, window):
 
 def saveContact(new_window, name, contact, ws, wb, window):
     row = ws.max_row
+    lowered = contact.lower()
     
     for i in range(1, row + 1):
         if ws.cell(column=2, row=i).value == name:
             if ws.cell(column=5, row=i).value == None or ws.cell(column=5, row=i).value == ' ':
-                ws.cell(column=5, row=i, value=contact)
+                ws.cell(column=5, row=i, value=lowered)
                 wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
                 window.destroy()
                 new_window.destroy()
                 openCalendar()
                 return
-            elif ws.cell(column=6, row=i).value == None or ws.cell(column=5, row=i).value == ' ':
-                ws.cell(column=6, row=i, value=contact)
+            elif ws.cell(column=6, row=i).value == None or ws.cell(column=6, row=i).value == ' ':
+                ws.cell(column=6, row=i, value=lowered)
                 wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
                 window.destroy()
                 new_window.destroy()
                 openCalendar()
                 return
-            elif ws.cell(column=7, row=i).value == None or ws.cell(column=5, row=i).value == ' ':
-                ws.cell(column=7, row=i, value=contact)
+            elif ws.cell(column=7, row=i).value == None or ws.cell(column=7, row=i).value == ' ':
+                ws.cell(column=7, row=i, value=lowered)
                 wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
                 window.destroy()
                 new_window.destroy()
@@ -258,36 +350,73 @@ def saveContact(new_window, name, contact, ws, wb, window):
 def createLegend(window):
     square = Label(window, bg = '#A331DC', width = 1)
     square.config(font =("Courier", 5))
-    square.place(x = 550, y = 17)
+    square.place(x = 445, y = 17)
 
     name = Label(window, text = 'Vanessa')
     name.config(font =("Courier", 12))
-    name.place(x = 563, y = 12)
+    name.place(x = 458, y = 12)
 
     square = Label(window, bg = '#4CE020', width = 1)
     square.config(font =("Courier", 5))
-    square.place(x = 550, y = 37)
+    square.place(x = 445, y = 37)
 
     name = Label(window, text = 'Kurt')
     name.config(font =("Courier", 12))
-    name.place(x = 563, y = 32)
+    name.place(x = 458, y = 32)
 
     square = Label(window, bg = '#DF4027', width = 1)
     square.config(font =("Courier", 5))
-    square.place(x = 670, y = 17)
+    square.place(x = 760, y = 37)
 
     name = Label(window, text = 'Other')
     name.config(font =("Courier", 12))
-    name.place(x = 683, y = 12)
+    name.place(x = 773, y = 32)
+
+    square = Label(window, bg = '#e9f026', width = 1)
+    square.config(font =("Courier", 5))
+    square.place(x = 550, y = 17)
+
+    name = Label(window, text = 'Di')
+    name.config(font =("Courier", 12))
+    name.place(x = 563, y = 12)
+
+    square = Label(window, bg = '#247ef2', width = 1)
+    square.config(font =("Courier", 5))
+    square.place(x = 655, y = 17)
+
+    name = Label(window, text = 'Workshop')
+    name.config(font =("Courier", 12))
+    name.place(x = 668, y = 12)
+
+    square = Label(window, bg = '#1bd5f2', width = 1)
+    square.config(font =("Courier", 5))
+    square.place(x = 655, y = 37)
+
+    name = Label(window, text = 'Service')
+    name.config(font =("Courier", 12))
+    name.place(x = 668, y = 32)
+
+    square = Label(window, bg = '#f21be7', width = 1)
+    square.config(font =("Courier", 5))
+    square.place(x = 550, y = 37)
+    name = Label(window, text = 'Sophie')
+    name.config(font =("Courier", 12))
+    name.place(x = 563, y = 32)
 
 
 def setContact(window, contact, x, y):   
     if contact.lower() == 'kurt':
         square = Label(window, bg = '#4CE020', width = 1)
-
     elif contact.lower() == 'vanessa':
         square = Label(window, bg = '#A331DC', width = 1)
-
+    elif contact.lower() == 'di':
+        square = Label(window, bg = '#e9f026', width = 1)
+    elif contact.lower() == 'sophie':
+        square = Label(window, bg = '#f21be7', width = 1)
+    elif contact.lower() == 'workshop':
+        square = Label(window, bg = '#247ef2', width = 1)
+    elif contact.lower() == 'service':
+        square = Label(window, bg = '#1bd5f2', width = 1)
     else:
         square = Label(window, bg = '#DF4027', width = 1)
 
@@ -308,6 +437,8 @@ def addNote(name, ws, wb, window):
 
     submit_button = Button(newWindow, width = 10, bg='#e1e5eb', text='Save', command = lambda: saveNote(note_entry.get(), name, ws, wb, newWindow, window))
     submit_button.place(x = 197, y = 67)
+
+    center(newWindow)
 
 # save note to relevant row in calendar
 def saveNote(note, name, ws, wb, new_window, window):
@@ -344,6 +475,8 @@ def viewNote(name, ws):
     close_button = Button(newWindow, width = 10, bg='#e1e5eb', text='Ok', command = lambda: newWindow.destroy())
     close_button.place(x = 197, y = 57)
 
+    center(newWindow)
+
 # remove the order from the calendar when complete
 def removeOrder(window, name, ws, wb):
     newWindow = Toplevel()
@@ -356,6 +489,8 @@ def removeOrder(window, name, ws, wb):
 
     submit_button = Button(newWindow, width = 10, bg='#e1e5eb', text='Confirm', command = lambda: confirmRemoval(newWindow, window, name, ws, wb))
     submit_button.place(x = 280, y = 67)
+
+    center(newWindow)
 
 def confirmRemoval(newWindow, window, name, ws, wb):
     rows = ws.max_row
@@ -375,8 +510,8 @@ def openCalendar():
      
     newWindow = Toplevel()
     alto=500
-    ancho=810
-    anchoalto="810x500"
+    ancho=900
+    anchoalto="900x500"
 
     # Toplevel widget
     newWindow.title("Calendar")
@@ -391,9 +526,8 @@ def openCalendar():
     my_canvas = Canvas(main_frame, width=ancho, height=alto)
     my_canvas.place(x=0,y=0)
     
-
     my_scrollbar = ttk.Scrollbar(main_frame, orient=VERTICAL, command=my_canvas.yview)
-    my_scrollbar.place(x=790, y=0, height=alto)
+    my_scrollbar.place(x=880, y=0, height=alto)
 
     my_canvas.configure(yscrollcommand=my_scrollbar.set)
     my_canvas.bind('<Configure>', lambda e: my_canvas.configure(scrollregion = my_canvas.bbox("all")))
@@ -409,6 +543,8 @@ def openCalendar():
     my_canvas.create_window((0,0), window=second_frame, anchor="nw")
 
     loadCalendar(second_frame, newWindow)
+
+    center(newWindow)
 
 def upcomingDates():
     window = Toplevel()
@@ -479,9 +615,10 @@ def upcomingDates():
                 offset7 += 26
                 addJob(window, ws, i, offset7, 310)
         except:
-            print('invalid date')
+            pass
 
     window.configure(height=100 + max(offset1, offset7))
+    center(window)
 
 def addJob(window, ws, i, offset, x):
     name = ws.cell(column=3, row=i).value
