@@ -1,0 +1,99 @@
+import tkinter as tk
+import tkinter.ttk as ttk
+from tkinter import *
+import os
+from openpyxl import load_workbook
+
+PATH = os.path.abspath(".") # path to the folder containing the python file
+
+# class that loads the initial window and handles styles/interactions
+class Window:
+    def __init__(self, master):
+        frame = Frame(master, bg='white')
+
+        # load customer names to allow for search
+        self.cus_search = CustomerData(frame)
+
+        
+        frame.pack()
+
+
+# class that handles searching customers by name, retrieving information and creating new customers
+class CustomerData:
+    def __init__(self, frame):
+        # load all customer names from excel doc
+        self.cus_names = []
+        try:
+            wb = load_workbook(PATH + '\\Data\\Customer List\\GTC Customer List.xlsx')
+            ws = wb['Sheet1']  
+            name = ws['A']
+            self.cus_names = [name[x].value for x in range(len(name))]
+            del self.cus_names[0]
+        except:
+            print('No Customer Data Available')
+        
+        # create label for search entry
+        self.search_image = PhotoImage(file=PATH + '\\Resources\\Images\\search_box.png')
+        self.search_label = Label(frame, image=self.search_image, border=0)
+        self.search_label.grid(row=0, column=0, padx=5, pady=0, sticky=W)
+        
+        # create search entry field that can be submitted by pressing enter
+        self.search_entry = Entry(frame)
+        self.search_entry.configure(width=32, foreground='grey', font='GoogleSans 11', border=0)
+        self.search_entry.insert(END, 'Search for a Customer')
+        self.search_entry.bind('<KeyRelease>', self.check_listbox)
+        self.search_entry.bind('<1>', self.clicked)
+        self.search_entry.grid(row=0, column=0, padx=40, pady=0, sticky=W)
+
+        # create list box to fill with autocomplete suggestions
+        self.listbox = Listbox(frame, exportselection=False, border=0, width=32, height=5, font='GoogleSans 11', fg='grey', highlightthickness=0)
+        self.listbox.grid(row=1, column=0, padx=5, pady=0, sticky=N)
+        self.listbox.bind('<<ListboxSelect>>', self.autofill)
+
+    # delete default search entry text when clicked
+    def clicked(self, event=None):
+        if self.search_entry.get() == 'Search for a Customer':
+            self.search_entry.delete(0, END)
+        
+    # check if search entry matches any customer names and update listbox
+    def check_listbox(self, event=None):
+        typed = self.search_entry.get()
+        self.search_entry.configure(foreground='black')
+
+        if typed == '':
+            data = []
+        else:
+            data = []
+            for name in self.cus_names:
+                if typed.lower() in name.lower():
+                    data.append(name)
+        
+        self.update_listbox(data)
+    
+    # update suggestions based on search entry
+    def update_listbox(self, data):
+        self.listbox.delete(0, END)
+        for name in data:
+            self.listbox.insert(END, name)
+
+    # autofill entry and customer information based on selection
+    def autofill(self, event=None):
+        try:
+            self.search_entry.delete(0, END)
+            self.search_entry.insert(0, self.listbox.get(self.listbox.curselection()))
+            self.update_listbox([])
+        except:
+            self.search_entry.insert(END, 'Search for a Customer')
+
+
+#class JobSheets:
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.geometry("1235x645")
+    root.title("Geraldton Trophy Centre")
+    root.configure(background='white')
+
+    window = Window(root)
+
+    root.mainloop()
