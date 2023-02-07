@@ -5,6 +5,8 @@ import os
 from openpyxl import load_workbook
 
 PATH = os.path.abspath(".") # path to the folder containing the python file
+FONT = 'GoogleSans 11' # font used throughout the application
+ENTRY_COLOUR = '#6e6d6d' # colour of entry field text
 
 # class that loads the initial window and handles styles/interactions
 class Window:
@@ -12,44 +14,228 @@ class Window:
         frame = Frame(master, bg='white')
 
         # load customer names to allow for search
-        self.cus_search = CustomerData(frame)
+        self.cus_search = CustomerData(frame, self)
 
+        # create heading
+        self.heading = PhotoImage(file=PATH + '\\Resources\\Images\\heading_image.png')
+        self.heading_label = Label(frame, image=self.heading, border=0)
+        self.heading_label.grid(row=0, column=1, padx=5, pady=0, rowspan=2, sticky=N)
         
         frame.pack()
 
+    # create error message window
+    def error_message(self, message):
+        self.error = Toplevel()
+        self.error.title('Error')
+        self.error.geometry('')
+        self.error.configure(background='white')
+        self.error.iconbitmap(PATH + '\\Resources\\Images\\logo.ico')
 
-# class that handles searching customers by name, retrieving information and creating new customers
+        self.error_image = PhotoImage(file=PATH + '\\Resources\\Images\\error_cross.png')
+        self.error_cross = Label(self.error, image=self.error_image, border=0)
+        self.error_cross.grid(row=0, column=0, padx=(15, 0), pady=15, sticky=E)
+        self.error_label = Label(self.error, text=message, font=FONT, bg='white')
+        self.error_label.grid(row=0, column=1, padx=(5, 15), pady=(5, 15), sticky=W)
+
+        self.button_image = PhotoImage(file=PATH + '\\Resources\\Images\\button_ok.png')
+        self.error_button = Button(self.error, image=self.button_image, command=self.error.destroy, border=0, bg='white', highlightthickness=0)
+
+        self.error_button.grid(row=1, column=0, columnspan=2, padx=10, pady=(5, 15), sticky=N)
+
+        self.error.attributes('-topmost', 'true')
+        self.center(self.error)
+
+    # create confirmation message window
+    def confirm_message(self, message):
+        self.confirm = Toplevel()
+        self.confirm.title('Confirmation')
+        self.confirm.geometry('')
+        self.confirm.configure(background='white')
+        self.confirm.iconbitmap(PATH + '\\Resources\\Images\\logo.ico')
+
+        self.confirm_image = PhotoImage(file=PATH + '\\Resources\\Images\\confirm_tick.png')
+        self.confirm_tick = Label(self.confirm, image=self.confirm_image, border=0)
+        self.confirm_tick.grid(row=0, column=0, padx=(15, 0), pady=15, sticky=E)
+        self.confirm_label = Label(self.confirm, text=message, font=FONT, bg='white')
+        self.confirm_label.grid(row=0, column=1, padx=(5, 15), pady=(5, 15), sticky=W)
+
+        self.button_image = PhotoImage(file=PATH + '\\Resources\\Images\\button_ok.png')
+        self.confirm_button = Button(self.confirm, image=self.button_image, command=self.confirm.destroy, border=0, bg='white', highlightthickness=0)
+
+        self.confirm_button.grid(row=1, column=0, columnspan=2, padx=10, pady=(5, 15), sticky=N)
+
+        self.confirm.attributes('-topmost', 'true')
+        self.center(self.confirm)
+
+    # give the customer a choice between two options (ok/cancel)
+    def option_message(self, message, function):
+        self.option = Toplevel()
+        self.option.title('Confirmation')
+        self.option.geometry('')
+        self.option.configure(background='white')
+        self.option.iconbitmap(PATH + '\\Resources\\Images\\logo.ico')
+
+        self.option_label = Label(self.option, text=message, font=FONT, bg='white')
+        self.option_label.grid(row=0, column=0, padx=(15, 15), pady=15, columnspan=2, sticky=W)
+
+        self.button_ok = PhotoImage(file=PATH + '\\Resources\\Images\\button_ok.png')
+        if function == 'delete':
+            self.ok_button = Button(self.option, image=self.button_ok, command=lambda:(self.cus_search.del_cus(), self.option.destroy()), border=0, bg='white', highlightthickness=0)
+        self.ok_button.grid(row=1, column=0, padx=(0,10), pady=(5, 15), sticky=E)
+
+        self.button_cancel = PhotoImage(file=PATH + '\\Resources\\Images\\button_cancel.png')
+        self.cancel_button = Button(self.option, image=self.button_cancel, command=self.option.destroy, border=0, bg='white', highlightthickness=0)
+        self.cancel_button.grid(row=1, column=1, padx=(10,0), pady=(5, 15), sticky=W)
+
+        self.option.attributes('-topmost', 'true')
+        self.center(self.option)
+
+    
+
+
+    # center any windows that pop up on the screen
+    def center(self, win):
+        win.update_idletasks()
+        width = win.winfo_width()
+        frm_width = win.winfo_rootx() - win.winfo_x()
+        win_width = width + 2 * frm_width
+        height = win.winfo_height()
+        titlebar_height = win.winfo_rooty() - win.winfo_y()
+        win_height = height + titlebar_height + frm_width
+        x = win.winfo_screenwidth() // 2 - win_width // 2
+        y = win.winfo_screenheight() // 2 - win_height // 2
+        win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
+        win.deiconify()  
+
+
+# class that handles searching customers by name, retrieving information, creating new customers, deleting customers, and updating customer information
 class CustomerData:
-    def __init__(self, frame):
+    def __init__(self, frame, window):
         # load all customer names from excel doc
         self.cus_names = []
         try:
-            wb = load_workbook(PATH + '\\Data\\Customer List\\GTC Customer List.xlsx')
+            wb = load_workbook(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
             ws = wb['Sheet1']  
             name = ws['A']
             self.cus_names = [name[x].value for x in range(len(name))]
             del self.cus_names[0]
+            wb.close()
         except:
-            print('No Customer Data Available')
+            window.error_message('Error! Customer List Not Found')
         
         # create label for search entry
         self.search_image = PhotoImage(file=PATH + '\\Resources\\Images\\search_box.png')
         self.search_label = Label(frame, image=self.search_image, border=0)
-        self.search_label.grid(row=0, column=0, padx=5, pady=0, sticky=W)
+        self.search_label.grid(row=0, column=0, padx=15, pady=(10, 0), sticky=W)
         
         # create search entry field that can be submitted by pressing enter
         self.search_entry = Entry(frame)
-        self.search_entry.configure(width=32, foreground='grey', font='GoogleSans 11', border=0)
+        self.search_entry.configure(width=32, foreground='grey', font=FONT, border=0)
         self.search_entry.insert(END, 'Search for a Customer')
         self.search_entry.bind('<KeyRelease>', self.check_listbox)
         self.search_entry.bind('<1>', self.clicked)
-        self.search_entry.grid(row=0, column=0, padx=40, pady=0, sticky=W)
+        self.search_entry.grid(row=0, column=0, padx=50, pady=(10, 0), sticky=W)
 
         # create list box to fill with autocomplete suggestions
-        self.listbox = Listbox(frame, exportselection=False, border=0, width=32, height=5, font='GoogleSans 11', fg='grey', highlightthickness=0)
-        self.listbox.grid(row=1, column=0, padx=5, pady=0, sticky=N)
+        self.listbox = Listbox(frame, exportselection=False, border=0, width=32, height=5, font=FONT, fg='grey', highlightthickness=0)
+        self.listbox.grid(row=1, column=0, padx=15, pady=0, sticky=N)
         self.listbox.bind('<<ListboxSelect>>', self.autofill)
 
+        # add button to clear search entry
+        self.clear_button = Button(frame, text='x', command=lambda:self.search_entry.delete(0, END), border=0, bg='white', fg='grey', font=FONT, highlightthickness=0)
+        self.clear_button.grid(row=0, column=0, padx=53, pady=(10, 2), sticky=E)
+
+        # create all entry fields with labels, cumbersome/lengthy code so moved out of __init__
+        self.create_entries(frame)
+
+        # create button to clear all entry fields
+        self.cus_clear = PhotoImage(file=PATH + '\\Resources\\Images\\cus_clear.png')
+        self.clear_button = Button(frame, image=self.cus_clear, command=self.clear_cus_entries, border=0, bg='white', highlightthickness=0)
+        self.clear_button.grid(row=12, column=0, padx=(30, 0), pady=(12, 8), sticky=W)
+
+        # create button to add new customer to database
+        self.cus_add = PhotoImage(file=PATH + '\\Resources\\Images\\add_customer.png')
+        self.add_button = Button(frame, image=self.cus_add, command=self.add_customer, border=0, bg='white', highlightthickness=0)
+        self.add_button.grid(row=12, column=0, padx=(182, 0), pady=(12, 8), sticky=W)
+
+        # create button to edit customer information in database
+        self.cus_edit = PhotoImage(file=PATH + '\\Resources\\Images\\edit_customer.png')
+        self.edit_button = Button(frame, image=self.cus_edit, command=self.edit_customer, border=0, bg='white', highlightthickness=0)
+        self.edit_button.grid(row=13, column=0, padx=(30, 0), pady=(0, 15), sticky=W)
+
+        # create button to edit customer information in database
+        self.cus_del = PhotoImage(file=PATH + '\\Resources\\Images\\delete_customer.png')
+        self.del_button = Button(frame, image=self.cus_del, command=self.delete_customer, border=0, bg='white', highlightthickness=0)
+        self.del_button.grid(row=13, column=0, padx=(182, 0), pady=(0, 15), sticky=W)
+
+    def edit_customer(self):
+        print('edit customer')
+
+    # creates the message and opens option window
+    def delete_customer(self):
+        text = f'Are you sure you want to delete {self.name_entry.get()} from the customer list?'
+        window.option_message(text, 'delete')
+
+    # deletes the customer from the excel doc
+    def del_cus(self):
+        name = self.name_entry.get()
+        try:
+            row = self.cus_names.index(name) + 2
+
+            wb = load_workbook(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+            ws = wb['Sheet1']
+            ws.delete_rows(row, 1)
+
+            wb.save(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+            wb.close()
+
+            self.cus_names.remove(name)
+
+            window.confirm_message(f'Successfully deleted {name} from the customer list')
+        except:
+            window.error_message('Error! Customer List Not Found')
+
+    # add customer to the excel doc and update the list of customer names
+    def add_customer(self):
+        # check if customer name already exists
+        if self.name_entry.get() in self.cus_names:
+            window.error_message('Error! Customer already exists')
+        else:
+            try:
+                name = self.name_entry.get()
+                
+                # add new customer to excel doc
+                wb = load_workbook(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+                ws = wb['Sheet1'] 
+                max_row = ws.max_row + 1
+
+                ws.cell(column=1, row=max_row, value=self.name_entry.get())
+                ws.cell(column=3, row=max_row, value=self.address_entry.get())
+                ws.cell(column=5, row=max_row, value=self.state_entry.get())
+                ws.cell(column=4, row=max_row, value=self.city_entry.get())
+                ws.cell(column=6, row=max_row, value=self.postcode_entry.get())
+                ws.cell(column=7, row=max_row, value=self.phone_entry.get())
+                ws.cell(column=8, row=max_row, value=self.email_entry.get())
+
+                wb.save(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+                wb.close()
+
+                self.cus_names.append(name)
+
+                window.confirm_message(f'Successfully added {name} to the customer list')
+            except:
+                window.error_message('Error! Customer List Not Found')
+    
+    # clears all entry fields for customer data
+    def clear_cus_entries(self):
+        self.name_entry.delete(0, END)
+        self.address_entry.delete(0, END)
+        self.state_entry.delete(0, END)
+        self.city_entry.delete(0, END)
+        self.postcode_entry.delete(0, END)
+        self.phone_entry.delete(0, END)
+        self.email_entry.delete(0, END)
+    
     # delete default search entry text when clicked
     def clicked(self, event=None):
         if self.search_entry.get() == 'Search for a Customer':
@@ -83,17 +269,106 @@ class CustomerData:
             self.search_entry.insert(0, self.listbox.get(self.listbox.curselection()))
             self.update_listbox([])
         except:
+            self.search_entry.configure(foreground='grey')
             self.search_entry.insert(END, 'Search for a Customer')
+        
+        if self.search_entry.get() != 'Search for a Customer':
+            try:
+                # autofill customer information
+                self.clear_cus_entries()
+                row = self.cus_names.index(self.search_entry.get()) + 2
+
+                wb = load_workbook(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+                ws = wb['Sheet1']  
+                # confirming there is a value in the cell, does not like empty cells
+                if ws.cell(row=row, column=1).value:
+                    self.name_entry.insert(0, ws.cell(row=row, column=1).value)
+                if ws.cell(row=row, column=3).value:
+                    self.address_entry.insert(0, ws.cell(row=row, column=3).value)
+                if ws.cell(row=row, column=5).value:
+                    self.state_entry.insert(0, ws.cell(row=row, column=5).value)
+                if ws.cell(row=row, column=4).value:
+                    self.city_entry.insert(0, ws.cell(row=row, column=4).value)
+                if ws.cell(row=row, column=6).value:
+                    self.postcode_entry.insert(0, ws.cell(row=row, column=6).value)
+                if ws.cell(row=row, column=7).value:
+                    self.phone_entry.insert(0, ws.cell(row=row, column=7).value)
+                if ws.cell(row=row, column=8).value:
+                    self.email_entry.insert(0, ws.cell(row=row, column=8).value)
+
+                wb.close()
+            except:
+                window.error_message('Error! Customer List Not Found')
+
+
+    # creates all customer entry fields and labels
+    def create_entries(self, frame):
+        self.name_text = Label(frame, text='Customer Name', font=FONT, bg='white')
+        self.name_text.grid(row=2, column=0, padx=20, pady=(5, 0), sticky=W)
+        self.image35 = PhotoImage(file=PATH + '\\Resources\\Images\\entry_36.png')
+        self.name_label = Label(frame, image=self.image35, border=0)
+        self.name_label.grid(row=3, column=0, padx=18, pady=0, sticky=W)
+        self.name_entry = Entry(frame, width=36, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.name_entry.grid(row=3, column=0, padx=(27,0), pady=0, sticky=W)
+
+        self.address_text = Label(frame, text='Address', font=FONT, bg='white')
+        self.address_text.grid(row=4, column=0, padx=20, pady=(5, 0), sticky=W)
+        self.address_label = Label(frame, image=self.image35, border=0)
+        self.address_label.grid(row=5, column=0, padx=18, pady=0, sticky=W)
+        self.address_entry = Entry(frame, width=36, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.address_entry.grid(row=5, column=0, padx=(27,0), pady=0, sticky=W)
+
+        self.state_text = Label(frame, text='State', font=FONT, bg='white')
+        self.state_text.grid(row=6, column=0, padx=(229, 0), pady=(5, 0), sticky=W)
+        self.image10 = PhotoImage(file=PATH + '\\Resources\\Images\\entry_10.png')
+        self.state_label = Label(frame, image=self.image10, border=0)
+        self.state_label.grid(row=7, column=0, padx=(227, 0), pady=0, sticky=W)
+        self.state_entry = Entry(frame, width=10, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.state_entry.grid(row=7, column=0, padx=(236,0), pady=0, sticky=W)
+
+        self.city_text = Label(frame, text='City', font=FONT, bg='white')
+        self.city_text.grid(row=6, column=0, padx=20, pady=(5, 0), sticky=W)
+        self.image20 = PhotoImage(file=PATH + '\\Resources\\Images\\entry_20.png')
+        self.city_label = Label(frame, image=self.image20, border=0)
+        self.city_label.grid(row=7, column=0, padx=18, pady=0, sticky=W)
+        self.city_entry = Entry(frame, width=20, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.city_entry.grid(row=7, column=0, padx=(27,0), pady=0, sticky=W)
+
+        self.postcode_text = Label(frame, text='Postcode', font=FONT, bg='white')
+        self.postcode_text.grid(row=8, column=0, padx=(229, 0), pady=(5, 0), sticky=W)
+        self.postcode_label = Label(frame, image=self.image10, border=0)
+        self.postcode_label.grid(row=9, column=0, padx=(227, 0), pady=0, sticky=W)
+        self.postcode_entry = Entry(frame, width=10, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.postcode_entry.grid(row=9, column=0, padx=(236,0), pady=0, sticky=W)
+
+        self.phone_text = Label(frame, text='Phone Number', font=FONT, bg='white')
+        self.phone_text.grid(row=8, column=0, padx=20, pady=(5, 0), sticky=W)
+        self.phone_label = Label(frame, image=self.image20, border=0)
+        self.phone_label.grid(row=9, column=0, padx=18, pady=0, sticky=W)
+        self.phone_entry = Entry(frame, width=10, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.phone_entry.grid(row=9, column=0, padx=(27,0), pady=0, sticky=W)
+
+        self.email_text = Label(frame, text='Email Address', font=FONT, bg='white')
+        self.email_text.grid(row=10, column=0, padx=20, pady=(5, 0), sticky=W)
+        self.email_label = Label(frame, image=self.image35, border=0)
+        self.email_label.grid(row=11, column=0, padx=18, pady=0, sticky=W)
+        self.email_entry = Entry(frame, width=36, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.email_entry.grid(row=11, column=0, padx=(27,0), pady=0, sticky=W)
+
+        
+
 
 
 #class JobSheets:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.geometry("1235x645")
-    root.title("Geraldton Trophy Centre")
+    root.geometry("")
+    root.title("Geraldton Trophy Centre v5.0")
     root.configure(background='white')
+    root.iconbitmap(PATH + '\\Resources\\Images\\logo.ico')
 
     window = Window(root)
+    window.center(root)
 
     root.mainloop()
