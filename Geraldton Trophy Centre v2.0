@@ -3,6 +3,7 @@ import tkinter.ttk as ttk
 from tkinter import *
 import os
 from openpyxl import load_workbook
+from PIL import Image, ImageDraw, ImageGrab
 
 PATH = os.path.abspath(".") # path to the folder containing the python file
 FONT = 'GoogleSans 11' # font used throughout the application
@@ -13,15 +14,18 @@ class Window:
     def __init__(self, master):
         frame = Frame(master, bg='white')
 
-        # load customer names to allow for search
-        self.cus_search = CustomerData(frame, self)
+        # load classes
+        self.cus_search = CustomerDetails(frame, self)
+        self.cus_history = CustomerHistory(frame)
+        self.signature = Signature(frame)
+        self.sheet = JobSheets(frame)
 
         # create heading
         self.heading = PhotoImage(file=PATH + '\\Resources\\Images\\heading_image.png')
         self.heading_label = Label(frame, image=self.heading, border=0)
-        self.heading_label.grid(row=0, column=1, padx=5, pady=0, rowspan=2, sticky=N)
+        self.heading_label.grid(row=0, column=1, padx=5, pady=0, rowspan=2, columnspan=2, sticky=N)
         
-        frame.pack()
+        frame.grid()
 
     # create error message window
     def error_message(self, message):
@@ -35,7 +39,7 @@ class Window:
         self.error_cross = Label(self.error, image=self.error_image, border=0)
         self.error_cross.grid(row=0, column=0, padx=(15, 0), pady=15, sticky=E)
         self.error_label = Label(self.error, text=message, font=FONT, bg='white')
-        self.error_label.grid(row=0, column=1, padx=(5, 15), pady=(5, 15), sticky=W)
+        self.error_label.grid(row=0, column=1, padx=(5, 15), pady=(15, 15), sticky=W)
 
         self.button_image = PhotoImage(file=PATH + '\\Resources\\Images\\button_ok.png')
         self.error_button = Button(self.error, image=self.button_image, command=self.error.destroy, border=0, bg='white', highlightthickness=0)
@@ -57,7 +61,7 @@ class Window:
         self.confirm_tick = Label(self.confirm, image=self.confirm_image, border=0)
         self.confirm_tick.grid(row=0, column=0, padx=(15, 0), pady=15, sticky=E)
         self.confirm_label = Label(self.confirm, text=message, font=FONT, bg='white')
-        self.confirm_label.grid(row=0, column=1, padx=(5, 15), pady=(5, 15), sticky=W)
+        self.confirm_label.grid(row=0, column=1, padx=(5, 15), pady=(15, 15), sticky=W)
 
         self.button_image = PhotoImage(file=PATH + '\\Resources\\Images\\button_ok.png')
         self.confirm_button = Button(self.confirm, image=self.button_image, command=self.confirm.destroy, border=0, bg='white', highlightthickness=0)
@@ -81,6 +85,8 @@ class Window:
         self.button_ok = PhotoImage(file=PATH + '\\Resources\\Images\\button_ok.png')
         if function == 'delete':
             self.ok_button = Button(self.option, image=self.button_ok, command=lambda:(self.cus_search.del_cus(), self.option.destroy()), border=0, bg='white', highlightthickness=0)
+        elif function == 'edit':
+            self.ok_button = Button(self.option, image=self.button_ok, command=lambda:(self.cus_search.edit_cus(), self.option.destroy()), border=0, bg='white', highlightthickness=0)
         self.ok_button.grid(row=1, column=0, padx=(0,10), pady=(5, 15), sticky=E)
 
         self.button_cancel = PhotoImage(file=PATH + '\\Resources\\Images\\button_cancel.png')
@@ -89,9 +95,6 @@ class Window:
 
         self.option.attributes('-topmost', 'true')
         self.center(self.option)
-
-    
-
 
     # center any windows that pop up on the screen
     def center(self, win):
@@ -107,9 +110,98 @@ class Window:
         win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
         win.deiconify()  
 
+# class that generates fields for different job sheets
+class JobSheets:
+    def __init__(self, frame):
+        # button that creates the trophy sheet entries/labels
+        self.button_trophy = PhotoImage(file=PATH + '\\Resources\\Images\\trophy_sheet.png')
+        self.trophy_button = Button(frame, image=self.button_trophy, command=self.trophy_sheet, border=0, bg='white', highlightthickness=0)
+        self.trophy_button.grid(row=2, column=1, padx=(10,20), pady=(10, 0), sticky=W)
+
+        # button that creates the engraving sheet entries/labels
+        self.button_engraving = PhotoImage(file=PATH + '\\Resources\\Images\\engraving_sheet.png')
+        self.engraving_button = Button(frame, image=self.button_engraving, command=self.engraving_sheet, border=0, bg='white', highlightthickness=0)
+        self.engraving_button.grid(row=2, column=2, padx=(0,0), pady=(10, 0), sticky=W)
+
+    def trophy_sheet(self):
+        print('trophy sheet')
+
+    def engraving_sheet(self):
+        print('engraving sheet')
+
+
+# class that handles all signature field functionality,
+class Signature:
+    def __init__(self, frame):
+        # impletement signature field
+        self.signature(frame)
+
+        # signature heading
+        self.sig_label = Label(frame, text='Signature', font='GoogleSans 12 bold', bg='white', fg='#858585')
+        self.sig_label.grid(row=0, column=3, padx=(50,0), pady=(10, 0), sticky=NW)
+        
+        # save a copy of the signature to the resources folder
+        #confirm_button = Button(frame ,text='Confirm', width=10, bg='#e1e5eb', command=self.img.save(PATH + '\\Resources\\Images\\signature.png'))
+        #confirm_button.grid(row=2, column=2, padx=(0,20), pady=(10, 0))
+        
+    # create signature field and implement functionality
+    def signature(self, frame):    
+        # image to make signature field look nice
+        self.sig_field_image = PhotoImage(file=PATH + '\\Resources\\Images\\signature_field.png')
+        self.sig_field_label = Label(frame, image=self.sig_field_image, border=0)
+        self.sig_field_label.grid(row=0, column=3, padx=(50,20), pady=(39, 0), rowspan=2, sticky=NW)
+        
+        # actual signature field that is written on
+        w = Canvas(frame, bg = 'white', highlightthickness=0, width=285, height = 105, name='signature field')
+        w.grid(row=0, column=3, padx=(58,20), pady=(49, 0), rowspan=2, sticky=NW)
+        self.img = Image.new('RGB',(285,105), (255, 255, 255))
+        draw = ImageDraw.Draw(self.img)
+
+        self.mousePressed = False
+        self.last=None
+
+        # mouse events
+        def press(evt):
+            self.mousePressed = True
+        def release(evt):
+            self.mousePressed = False
+
+        w.bind_all('<ButtonPress-1>', press)
+        w.bind_all('<ButtonRelease-1>', release)
+            
+        def move(evt):
+            # get the position of the mouse
+            x,y = frame.winfo_pointerxy()
+            widget = frame.winfo_containing(x,y)
+            # check if the mouse is in the signature field
+            if str(widget) == '.!frame.signature field':
+                # track mouse events to get customer signature
+                x,y = evt.x,evt.y
+                try:
+                    if self.mousePressed:
+                        if self.last is None:
+                            self.last = (x,y)
+                            return
+                        draw.line(((x,y),self.last), (0,0,0))
+                        w.create_line(x,y,self.last[0],self.last[1])
+                        self.last = (x,y)
+                    else:
+                        self.last = (x,y)
+                except:
+                    pass
+
+        w.bind_all('<Motion>', move)
+
+
+# class that handles display and saving of previous customer orders, including autofill
+class CustomerHistory:
+    def __init__(self, frame):
+        self.history = Label(frame, text='Previous Orders', font='GoogleSans 12 bold', bg='white', fg='#858585')
+        self.history.grid(row=14, column=0, padx=20, pady=(5, 0), sticky=NW)
+
 
 # class that handles searching customers by name, retrieving information, creating new customers, deleting customers, and updating customer information
-class CustomerData:
+class CustomerDetails:
     def __init__(self, frame, window):
         # load all customer names from excel doc
         self.cus_names = []
@@ -161,20 +253,52 @@ class CustomerData:
         # create button to edit customer information in database
         self.cus_edit = PhotoImage(file=PATH + '\\Resources\\Images\\edit_customer.png')
         self.edit_button = Button(frame, image=self.cus_edit, command=self.edit_customer, border=0, bg='white', highlightthickness=0)
-        self.edit_button.grid(row=13, column=0, padx=(30, 0), pady=(0, 15), sticky=W)
+        self.edit_button.grid(row=13, column=0, padx=(30, 0), pady=(0, 5), sticky=W)
 
         # create button to edit customer information in database
         self.cus_del = PhotoImage(file=PATH + '\\Resources\\Images\\delete_customer.png')
         self.del_button = Button(frame, image=self.cus_del, command=self.delete_customer, border=0, bg='white', highlightthickness=0)
-        self.del_button.grid(row=13, column=0, padx=(182, 0), pady=(0, 15), sticky=W)
+        self.del_button.grid(row=13, column=0, padx=(182, 0), pady=(0, 5), sticky=W)
 
+    # checks if customer is in list and confirms edit
     def edit_customer(self):
-        print('edit customer')
+        name = self.name_entry.get()
+        if name not in self.cus_names:
+            window.error_message('Error! Customer does not exist')
+        else:
+            window.option_message(f'Are you sure you want to change {name} information to the entered details?', 'edit')
+
+    # get the row of the customer in the excel doc and change the values to the new values
+    def edit_cus(self):
+        name = self.name_entry.get()
+        try:
+            row = self.cus_names.index(name) + 2
+
+            wb = load_workbook(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+            ws = wb['Sheet1']
+
+            ws.cell(column=1, row=row, value=self.name_entry.get())
+            ws.cell(column=3, row=row, value=self.address_entry.get())
+            ws.cell(column=5, row=row, value=self.state_entry.get())
+            ws.cell(column=4, row=row, value=self.city_entry.get())
+            ws.cell(column=6, row=row, value=self.postcode_entry.get())
+            ws.cell(column=7, row=row, value=self.phone_entry.get())
+            ws.cell(column=8, row=row, value=self.email_entry.get())
+
+            wb.save(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+            wb.close()
+            window.confirm_message(f'{name} Information Updated')
+            self.clear_cus_entries()
+        except:
+            window.error_message('Error! Customer List Not Found')
 
     # creates the message and opens option window
     def delete_customer(self):
-        text = f'Are you sure you want to delete {self.name_entry.get()} from the customer list?'
-        window.option_message(text, 'delete')
+        name = self.name_entry.get()
+        if name not in self.cus_names:
+            window.error_message('Error! Customer does not exist')
+        else:
+            window.option_message(f'Are you sure you want to delete {name} from the customer list?', 'delete')
 
     # deletes the customer from the excel doc
     def del_cus(self):
@@ -200,6 +324,8 @@ class CustomerData:
         # check if customer name already exists
         if self.name_entry.get() in self.cus_names:
             window.error_message('Error! Customer already exists')
+        elif self.name_entry.get() == '':
+            window.error_message('Error! Name field cannot be empty')
         else:
             try:
                 name = self.name_entry.get()
@@ -355,15 +481,9 @@ class CustomerData:
         self.email_entry = Entry(frame, width=36, border=0, font=FONT, fg=ENTRY_COLOUR)
         self.email_entry.grid(row=11, column=0, padx=(27,0), pady=0, sticky=W)
 
-        
-
-
-
-#class JobSheets:
-
 if __name__ == "__main__":
     root = tk.Tk()
-    root.geometry("")
+    root.geometry("1235x645")
     root.title("Geraldton Trophy Centre v5.0")
     root.configure(background='white')
     root.iconbitmap(PATH + '\\Resources\\Images\\logo.ico')
