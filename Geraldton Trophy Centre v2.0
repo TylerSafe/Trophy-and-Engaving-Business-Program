@@ -1,3 +1,9 @@
+# button creatin site: https://www.clickminded.com/button-generator/
+# button colour: red = #f35a5a, grey = #999999
+# other button details: bold, size 14, wid:125, height:29, rounded edges
+# pop up button details: bold, size 14, wid:70, height:29, rounded edges
+# generate application file: # pyinstaller --onefile -w Code_V4.01.py
+
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import *
@@ -18,12 +24,13 @@ class Window:
         self.cus_search = CustomerDetails(frame, self)
         self.cus_history = CustomerHistory(frame)
         self.signature = Signature(frame)
-        self.sheet = JobSheets(frame)
+        self.sheet = JobSheets(frame, master)
 
         # create heading
         self.heading = PhotoImage(file=PATH + '\\Resources\\Images\\heading_image.png')
         self.heading_label = Label(frame, image=self.heading, border=0)
-        self.heading_label.grid(row=0, column=1, padx=5, pady=0, rowspan=2, columnspan=2, sticky=N)
+        self.heading_label.grid(row=0, column=1, padx=(100,0), pady=0, rowspan=2, columnspan=1, sticky=NW)
+
         
         frame.grid()
 
@@ -112,25 +119,169 @@ class Window:
 
 # class that generates fields for different job sheets
 class JobSheets:
-    def __init__(self, frame):
+    def __init__(self, frame, master):
+        # initialize all the variables to be stored in the database
+        self.frame = frame
+        self.master = master
+        self.double11 = PhotoImage(file=PATH + '\\Resources\\Images\\double_11.png')
+        self.double40 = PhotoImage(file=PATH + '\\Resources\\Images\\double_40.png')
+        self.double4 = PhotoImage(file=PATH + '\\Resources\\Images\\double_4.png')
+        self.qty_entries = []
+        self.num_entries = []
+        self.sport_entries = []
+        self.details_entries = []
+        self.unit_entries = []
+        self.total_entries = []
+        
         # button that creates the trophy sheet entries/labels
         self.button_trophy = PhotoImage(file=PATH + '\\Resources\\Images\\trophy_sheet.png')
         self.trophy_button = Button(frame, image=self.button_trophy, command=self.trophy_sheet, border=0, bg='white', highlightthickness=0)
-        self.trophy_button.grid(row=2, column=1, padx=(10,20), pady=(10, 0), sticky=W)
+        self.trophy_button.grid(row=0, column=1, padx=(88,0), pady=(150, 0), sticky=NW)
 
         # button that creates the engraving sheet entries/labels
         self.button_engraving = PhotoImage(file=PATH + '\\Resources\\Images\\engraving_sheet.png')
         self.engraving_button = Button(frame, image=self.button_engraving, command=self.engraving_sheet, border=0, bg='white', highlightthickness=0)
-        self.engraving_button.grid(row=2, column=2, padx=(0,0), pady=(10, 0), sticky=W)
+        self.engraving_button.grid(row=0, column=1, padx=(242,0), pady=(150, 0), sticky=NW)
 
+    # implement scrollbar for the job sheet
+    def scrollbar(self):        
+        width = 845
+        height = 380
+        
+        scroll_frame = Frame(self.frame, width=width, height=height)
+        scroll_frame.place(x=370,y=330)
+
+        self.my_canvas = Canvas(scroll_frame, width=width, height=height, bg='white', highlightthickness=0)
+        self.my_canvas.place(x=0,y=0)
+        
+        self.my_scrollbar = ttk.Scrollbar(scroll_frame, orient=VERTICAL, command=self.my_canvas.yview)
+        self.my_scrollbar.place(x=width-20, y=0, height=height)
+
+        self.my_canvas.configure(yscrollcommand=self.my_scrollbar.set)
+        self.my_canvas.bind('<Configure>', lambda e: self.my_canvas.configure(scrollregion = self.my_canvas.bbox("all")))
+        
+        def _on_mouse_wheel(event):
+            self.my_canvas.yview_scroll(-1 * int((event.delta / 120)), "units")
+        
+        self.my_canvas.bind_all("<MouseWheel>", _on_mouse_wheel)
+        
+        self.second_frame = Frame(self.my_canvas,width=width,height=62, bg='white', highlightthickness=0)
+        self.second_frame.place(x=0,y=0)
+
+        self.my_canvas.create_window((0,0), window=self.second_frame, anchor="nw")
+
+    # function that creates entry fields for extra info such as order numner, date, etc.
+    def order_info(self):
+        self.date = Label(self.frame, text='Date', font=FONT, bg='white')
+        self.date.grid(row=0, column=1, padx=(18,0), pady=(190, 0), sticky=NW)
+        self.image15 = PhotoImage(file=PATH + '\\Resources\\Images\\entry_15.png')
+        self.date_label = Label(self.frame, image=self.image15, border=0)
+        self.date_label.grid(row=0, column=1, padx=18, pady=(210, 0), sticky=NW)
+        self.date_entry = Entry(self.frame, width=15, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.date_entry.grid(row=0, column=1, padx=(23,0), pady=(215, 0), sticky=NW)
+
+        self.req = Label(self.frame, text='Required Date', font=FONT, bg='white')
+        self.req.grid(row=0, column=1, padx=(185,0), pady=(190, 0), sticky=NW)
+        self.req_label = Label(self.frame, image=self.image15, border=0)
+        self.req_label.grid(row=0, column=1, padx=(185,0), pady=(210, 0), sticky=NW)
+        self.req_entry = Entry(self.frame, width=15, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.req_entry.grid(row=0, column=1, padx=(190,0), pady=(215, 0), sticky=NW)
+
+        self.contact = Label(self.frame, text='Contact', font=FONT, bg='white')
+        self.contact.grid(row=0, column=1, padx=(352,0), pady=(190, 0), sticky=NW)
+        self.contact_label = Label(self.frame, image=self.image15, border=0)
+        self.contact_label.grid(row=0, column=1, padx=(352,0), pady=(210, 0), sticky=NW)
+        self.contact_entry = Entry(self.frame, width=15, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.contact_entry.grid(row=0, column=1, padx=(357,0), pady=(215, 0), sticky=NW)
+
+        self.order = Label(self.frame, text='Order Number', font=FONT, bg='white')
+        self.order.grid(row=0, column=1, padx=(18,0), pady=(244, 0), sticky=NW)
+        self.order_label = Label(self.frame, image=self.image15, border=0)
+        self.order_label.grid(row=0, column=1, padx=18, pady=(264, 0), sticky=NW)
+        self.order_entry = Entry(self.frame, width=15, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.order_entry.grid(row=0, column=1, padx=(23,0), pady=(269, 0), sticky=NW)
+
+        self.invoice = Label(self.frame, text='Invoice Number', font=FONT, bg='white')
+        self.invoice.grid(row=0, column=1, padx=(185,0), pady=(244, 0), sticky=NW)
+        self.invoice_label = Label(self.frame, image=self.image15, border=0)
+        self.invoice_label.grid(row=0, column=1, padx=(185,0), pady=(264, 0), sticky=NW)
+        self.invoice_entry = Entry(self.frame, width=15, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.invoice_entry.grid(row=0, column=1, padx=(190,0), pady=(269, 0), sticky=NW)
+
+        self.team = Label(self.frame, text='Team Member', font=FONT, bg='white')
+        self.team.grid(row=0, column=1, padx=(352,0), pady=(244, 0), sticky=NW)
+        self.team_label = Label(self.frame, image=self.image15, border=0)
+        self.team_label.grid(row=0, column=1, padx=(352,0), pady=(264, 0), sticky=NW)
+        self.team_entry = Entry(self.frame, width=15, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.team_entry.grid(row=0, column=1, padx=(357,0), pady=(269, 0), sticky=NW)
+    
+    
+    # create trophy sheet entries/label and call scrollbar/row creation functions
     def trophy_sheet(self):
-        print('trophy sheet')
+        # all trophy sheet headings
+        self.qty_label = Label(self.frame, text='Qty', font='GoogleSans 12 bold', bg='white', fg='#858585')
+        self.qty_label.grid(row=0, column=1, padx=(17,0), pady=(307, 0), sticky=NW)
+
+        self.trophy_num = Label(self.frame, text='Trophy #', font='GoogleSans 12 bold', bg='white', fg='#858585')
+        self.trophy_num.grid(row=0, column=1, padx=(67,0), pady=(307, 0), sticky=NW)
+
+        self.trophy_sport = Label(self.frame, text='Sport', font='GoogleSans 12 bold', bg='white', fg='#858585')
+        self.trophy_sport.grid(row=0, column=1, padx=(173,0), pady=(307, 0), sticky=NW)
+
+        self.engrave_details = Label(self.frame, text='Engraving Details', font='GoogleSans 12 bold', bg='white', fg='#858585')
+        self.engrave_details.grid(row=0, column=1, padx=(279,0), pady=(307, 0), sticky=NW)
+
+        self.unit_price = Label(self.frame, text='Unit Price', font='GoogleSans 12 bold', bg='white', fg='#858585')
+        self.unit_price.grid(row=0, column=1, padx=(620,0), pady=(307, 0), sticky=NW)
+
+        self.total = Label(self.frame, text='Total', font='GoogleSans 12 bold', bg='white', fg='#858585')
+        self.total.grid(row=0, column=1, padx=(724,0), pady=(307, 0), sticky=NW)
+
+        self.scrollbar()
+        self.order_info()
+        self.add_rows()
+                
+    # add entry rows for the chosen job sheet
+    def add_rows(self):
+        for i in range(20):
+            qty = Label(self.second_frame, image=self.double4, border=0)            
+            qty.grid(row=i, column=0, padx=(5,0), pady=(0,0), sticky=NW)
+            self.qty_entries.append(Text(self.second_frame, width=4, height=2, border=0, font=FONT, fg=ENTRY_COLOUR))
+            self.qty_entries[i].grid(row=i, column=0, padx=(9,0), pady=(4,5), rowspan=1, sticky=NW)
+
+            num = Label(self.second_frame, image=self.double11, border=0)            
+            num.grid(row=i, column=1, padx=(5,0), pady=(0,0), sticky=NW)
+            self.num_entries.append(Text(self.second_frame, width=11, height=2, border=0, font=FONT, fg=ENTRY_COLOUR))
+            self.num_entries[i].grid(row=i, column=1, padx=(10,0), pady=(5,5), rowspan=1, sticky=NW)
+
+            sport = Label(self.second_frame, image=self.double11, border=0) 
+            sport.grid(row=i, column=2, padx=(5,0), pady=(0,0), sticky=NW)
+            self.sport_entries.append(Text(self.second_frame, width=11, height=2, border=0, font=FONT, fg=ENTRY_COLOUR))
+            self.sport_entries[i].grid(row=i, column=2, padx=(10,0), pady=(5,5), rowspan=1, sticky=NW)
+
+            details = Label(self.second_frame, image=self.double40, border=0) 
+            details.grid(row=i, column=3, padx=(5,0), pady=(0,0), sticky=NW)
+            self.details_entries.append(Text(self.second_frame, width=40, height=2, border=0, font=FONT, fg=ENTRY_COLOUR))
+            self.details_entries[i].grid(row=i, column=3, padx=(10,0), pady=(4,5), rowspan=1, sticky=NW)
+
+            unit = Label(self.second_frame, image=self.double11, border=0) 
+            unit.grid(row=i, column=4, padx=(5,0), pady=(0,0), sticky=NW)
+            self.unit_entries.append(Text(self.second_frame, width=11, height=2, border=0, font=FONT, fg=ENTRY_COLOUR))
+            self.unit_entries[i].grid(row=i, column=4, padx=(10,0), pady=(5,5), rowspan=1, sticky=NW)
+
+            total = Label(self.second_frame, image=self.double11, border=0) 
+            total.grid(row=i, column=5, padx=(5,0), pady=(0,0), sticky=NW)
+            self.total_entries.append(Text(self.second_frame, width=11, height=2, border=0, font=FONT, fg=ENTRY_COLOUR))
+            self.total_entries[i].grid(row=i, column=5, padx=(10,5), pady=(5,5), rowspan=1, sticky=NW)
+        
+            # adjust height of scrollbar frame
+            self.second_frame.configure(height=62 + (i * 62))
 
     def engraving_sheet(self):
         print('engraving sheet')
 
 
-# class that handles all signature field functionality,
+# class that handles all signature field functionality
 class Signature:
     def __init__(self, frame):
         # impletement signature field
@@ -138,22 +289,27 @@ class Signature:
 
         # signature heading
         self.sig_label = Label(frame, text='Signature', font='GoogleSans 12 bold', bg='white', fg='#858585')
-        self.sig_label.grid(row=0, column=3, padx=(50,0), pady=(10, 0), sticky=NW)
+        self.sig_label.grid(row=0, column=1, padx=(553,0), pady=(5, 0), sticky=NW)
         
         # save a copy of the signature to the resources folder
-        #confirm_button = Button(frame ,text='Confirm', width=10, bg='#e1e5eb', command=self.img.save(PATH + '\\Resources\\Images\\signature.png'))
-        #confirm_button.grid(row=2, column=2, padx=(0,20), pady=(10, 0))
+        self.confirm_image = PhotoImage(file=PATH + '\\Resources\\Images\\confirm_sig.png')
+        self.confirm_button = Button(frame ,image=self.confirm_image, command=self.img.save(PATH + '\\Resources\\Images\\signature.png'), border=0, bg='white', highlightthickness=0)
+        self.confirm_button.grid(row=0, column=1, padx=(720,20), pady=(165, 0), sticky=NW)
+
+        self.clear_image = PhotoImage(file=PATH + '\\Resources\\Images\\clear_sig.png')
+        self.clear_sig = Button(frame ,image=self.clear_image, command=lambda:(self.w.delete('all')), border=0, bg='white', highlightthickness=0)
+        self.clear_sig.grid(row=0, column=1, padx=(570,20), pady=(165, 0), sticky=NW)
         
     # create signature field and implement functionality
     def signature(self, frame):    
         # image to make signature field look nice
         self.sig_field_image = PhotoImage(file=PATH + '\\Resources\\Images\\signature_field.png')
         self.sig_field_label = Label(frame, image=self.sig_field_image, border=0)
-        self.sig_field_label.grid(row=0, column=3, padx=(50,20), pady=(39, 0), rowspan=2, sticky=NW)
+        self.sig_field_label.grid(row=0, column=1, padx=(550,20), pady=(31, 0), rowspan=2, sticky=NW)
         
         # actual signature field that is written on
-        w = Canvas(frame, bg = 'white', highlightthickness=0, width=285, height = 105, name='signature field')
-        w.grid(row=0, column=3, padx=(58,20), pady=(49, 0), rowspan=2, sticky=NW)
+        self.w = Canvas(frame, bg = 'white', highlightthickness=0, width=285, height = 105, name='signature field')
+        self.w.grid(row=0, column=1, padx=(558,20), pady=(41, 0), rowspan=2, sticky=NW)
         self.img = Image.new('RGB',(285,105), (255, 255, 255))
         draw = ImageDraw.Draw(self.img)
 
@@ -166,8 +322,8 @@ class Signature:
         def release(evt):
             self.mousePressed = False
 
-        w.bind_all('<ButtonPress-1>', press)
-        w.bind_all('<ButtonRelease-1>', release)
+        self.w.bind_all('<ButtonPress-1>', press)
+        self.w.bind_all('<ButtonRelease-1>', release)
             
         def move(evt):
             # get the position of the mouse
@@ -183,21 +339,21 @@ class Signature:
                             self.last = (x,y)
                             return
                         draw.line(((x,y),self.last), (0,0,0))
-                        w.create_line(x,y,self.last[0],self.last[1])
+                        self.w.create_line(x,y,self.last[0],self.last[1])
                         self.last = (x,y)
                     else:
                         self.last = (x,y)
                 except:
                     pass
 
-        w.bind_all('<Motion>', move)
+        self.w.bind_all('<Motion>', move)
 
 
 # class that handles display and saving of previous customer orders, including autofill
 class CustomerHistory:
     def __init__(self, frame):
         self.history = Label(frame, text='Previous Orders', font='GoogleSans 12 bold', bg='white', fg='#858585')
-        self.history.grid(row=14, column=0, padx=20, pady=(5, 0), sticky=NW)
+        self.history.grid(row=0, column=0, padx=20, pady=(485, 0), sticky=NW)
 
 
 # class that handles searching customers by name, retrieving information, creating new customers, deleting customers, and updating customer information
@@ -218,7 +374,7 @@ class CustomerDetails:
         # create label for search entry
         self.search_image = PhotoImage(file=PATH + '\\Resources\\Images\\search_box.png')
         self.search_label = Label(frame, image=self.search_image, border=0)
-        self.search_label.grid(row=0, column=0, padx=15, pady=(10, 0), sticky=W)
+        self.search_label.grid(row=0, column=0, padx=15, pady=(5, 0), sticky=NW)
         
         # create search entry field that can be submitted by pressing enter
         self.search_entry = Entry(frame)
@@ -226,16 +382,16 @@ class CustomerDetails:
         self.search_entry.insert(END, 'Search for a Customer')
         self.search_entry.bind('<KeyRelease>', self.check_listbox)
         self.search_entry.bind('<1>', self.clicked)
-        self.search_entry.grid(row=0, column=0, padx=50, pady=(10, 0), sticky=W)
+        self.search_entry.grid(row=0, column=0, padx=50, pady=(12, 0), sticky=NW)
 
         # create list box to fill with autocomplete suggestions
         self.listbox = Listbox(frame, exportselection=False, border=0, width=32, height=5, font=FONT, fg='grey', highlightthickness=0)
-        self.listbox.grid(row=1, column=0, padx=15, pady=0, sticky=N)
+        self.listbox.grid(row=0, column=0, padx=48, pady=(40,0), sticky=NW)
         self.listbox.bind('<<ListboxSelect>>', self.autofill)
 
         # add button to clear search entry
         self.clear_button = Button(frame, text='x', command=lambda:self.search_entry.delete(0, END), border=0, bg='white', fg='grey', font=FONT, highlightthickness=0)
-        self.clear_button.grid(row=0, column=0, padx=53, pady=(10, 2), sticky=E)
+        self.clear_button.grid(row=0, column=0, padx=(291, 0), pady=(10, 2), sticky=NW)
 
         # create all entry fields with labels, cumbersome/lengthy code so moved out of __init__
         self.create_entries(frame)
@@ -243,22 +399,22 @@ class CustomerDetails:
         # create button to clear all entry fields
         self.cus_clear = PhotoImage(file=PATH + '\\Resources\\Images\\cus_clear.png')
         self.clear_button = Button(frame, image=self.cus_clear, command=self.clear_cus_entries, border=0, bg='white', highlightthickness=0)
-        self.clear_button.grid(row=12, column=0, padx=(30, 0), pady=(12, 8), sticky=W)
+        self.clear_button.grid(row=0, column=0, padx=(30, 0), pady=(413, 8), sticky=NW)
 
         # create button to add new customer to database
         self.cus_add = PhotoImage(file=PATH + '\\Resources\\Images\\add_customer.png')
         self.add_button = Button(frame, image=self.cus_add, command=self.add_customer, border=0, bg='white', highlightthickness=0)
-        self.add_button.grid(row=12, column=0, padx=(182, 0), pady=(12, 8), sticky=W)
+        self.add_button.grid(row=0, column=0, padx=(182, 0), pady=(413, 8), sticky=NW)
 
         # create button to edit customer information in database
         self.cus_edit = PhotoImage(file=PATH + '\\Resources\\Images\\edit_customer.png')
         self.edit_button = Button(frame, image=self.cus_edit, command=self.edit_customer, border=0, bg='white', highlightthickness=0)
-        self.edit_button.grid(row=13, column=0, padx=(30, 0), pady=(0, 5), sticky=W)
+        self.edit_button.grid(row=0, column=0, padx=(30, 0), pady=(447, 5), sticky=NW)
 
         # create button to edit customer information in database
         self.cus_del = PhotoImage(file=PATH + '\\Resources\\Images\\delete_customer.png')
         self.del_button = Button(frame, image=self.cus_del, command=self.delete_customer, border=0, bg='white', highlightthickness=0)
-        self.del_button.grid(row=13, column=0, padx=(182, 0), pady=(0, 5), sticky=W)
+        self.del_button.grid(row=0, column=0, padx=(182, 0), pady=(447, 5), sticky=NW)
 
     # checks if customer is in list and confirms edit
     def edit_customer(self):
@@ -430,56 +586,56 @@ class CustomerDetails:
     # creates all customer entry fields and labels
     def create_entries(self, frame):
         self.name_text = Label(frame, text='Customer Name', font=FONT, bg='white')
-        self.name_text.grid(row=2, column=0, padx=20, pady=(5, 0), sticky=W)
+        self.name_text.grid(row=0, column=0, padx=20, pady=(136, 0), sticky=NW)
         self.image35 = PhotoImage(file=PATH + '\\Resources\\Images\\entry_36.png')
         self.name_label = Label(frame, image=self.image35, border=0)
-        self.name_label.grid(row=3, column=0, padx=18, pady=0, sticky=W)
+        self.name_label.grid(row=0, column=0, padx=18, pady=(156,0), sticky=NW)
         self.name_entry = Entry(frame, width=36, border=0, font=FONT, fg=ENTRY_COLOUR)
-        self.name_entry.grid(row=3, column=0, padx=(27,0), pady=0, sticky=W)
+        self.name_entry.grid(row=0, column=0, padx=(27,0), pady=(162,0), sticky=NW)
 
         self.address_text = Label(frame, text='Address', font=FONT, bg='white')
-        self.address_text.grid(row=4, column=0, padx=20, pady=(5, 0), sticky=W)
+        self.address_text.grid(row=0, column=0, padx=20, pady=(190, 0), sticky=NW)
         self.address_label = Label(frame, image=self.image35, border=0)
-        self.address_label.grid(row=5, column=0, padx=18, pady=0, sticky=W)
+        self.address_label.grid(row=0, column=0, padx=18, pady=(210,0), sticky=NW)
         self.address_entry = Entry(frame, width=36, border=0, font=FONT, fg=ENTRY_COLOUR)
-        self.address_entry.grid(row=5, column=0, padx=(27,0), pady=0, sticky=W)
+        self.address_entry.grid(row=0, column=0, padx=(27,0), pady=(216,0), sticky=NW)
 
         self.state_text = Label(frame, text='State', font=FONT, bg='white')
-        self.state_text.grid(row=6, column=0, padx=(229, 0), pady=(5, 0), sticky=W)
+        self.state_text.grid(row=0, column=0, padx=(229, 0), pady=(244, 0), sticky=NW)
         self.image10 = PhotoImage(file=PATH + '\\Resources\\Images\\entry_10.png')
         self.state_label = Label(frame, image=self.image10, border=0)
-        self.state_label.grid(row=7, column=0, padx=(227, 0), pady=0, sticky=W)
+        self.state_label.grid(row=0, column=0, padx=(227, 0), pady=(264, 0), sticky=NW)
         self.state_entry = Entry(frame, width=10, border=0, font=FONT, fg=ENTRY_COLOUR)
-        self.state_entry.grid(row=7, column=0, padx=(236,0), pady=0, sticky=W)
+        self.state_entry.grid(row=0, column=0, padx=(236,0), pady=(270, 0), sticky=NW)
 
         self.city_text = Label(frame, text='City', font=FONT, bg='white')
-        self.city_text.grid(row=6, column=0, padx=20, pady=(5, 0), sticky=W)
+        self.city_text.grid(row=0, column=0, padx=20, pady=(244, 0), sticky=NW)
         self.image20 = PhotoImage(file=PATH + '\\Resources\\Images\\entry_20.png')
         self.city_label = Label(frame, image=self.image20, border=0)
-        self.city_label.grid(row=7, column=0, padx=18, pady=0, sticky=W)
+        self.city_label.grid(row=0, column=0, padx=18, pady=(264, 0), sticky=NW)
         self.city_entry = Entry(frame, width=20, border=0, font=FONT, fg=ENTRY_COLOUR)
-        self.city_entry.grid(row=7, column=0, padx=(27,0), pady=0, sticky=W)
+        self.city_entry.grid(row=0, column=0, padx=(27,0), pady=(270, 0), sticky=NW)
 
         self.postcode_text = Label(frame, text='Postcode', font=FONT, bg='white')
-        self.postcode_text.grid(row=8, column=0, padx=(229, 0), pady=(5, 0), sticky=W)
+        self.postcode_text.grid(row=0, column=0, padx=(229, 0), pady=(298, 0), sticky=NW)
         self.postcode_label = Label(frame, image=self.image10, border=0)
-        self.postcode_label.grid(row=9, column=0, padx=(227, 0), pady=0, sticky=W)
+        self.postcode_label.grid(row=0, column=0, padx=(227, 0), pady=(318, 0), sticky=NW)
         self.postcode_entry = Entry(frame, width=10, border=0, font=FONT, fg=ENTRY_COLOUR)
-        self.postcode_entry.grid(row=9, column=0, padx=(236,0), pady=0, sticky=W)
+        self.postcode_entry.grid(row=0, column=0, padx=(236,0), pady=(324, 0), sticky=NW)
 
         self.phone_text = Label(frame, text='Phone Number', font=FONT, bg='white')
-        self.phone_text.grid(row=8, column=0, padx=20, pady=(5, 0), sticky=W)
+        self.phone_text.grid(row=0, column=0, padx=20, pady=(298, 0), sticky=NW)
         self.phone_label = Label(frame, image=self.image20, border=0)
-        self.phone_label.grid(row=9, column=0, padx=18, pady=0, sticky=W)
-        self.phone_entry = Entry(frame, width=10, border=0, font=FONT, fg=ENTRY_COLOUR)
-        self.phone_entry.grid(row=9, column=0, padx=(27,0), pady=0, sticky=W)
+        self.phone_label.grid(row=0, column=0, padx=18, pady=(318, 0), sticky=NW)
+        self.phone_entry = Entry(frame, width=20, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.phone_entry.grid(row=0, column=0, padx=(27,0), pady=(324, 0), sticky=NW)
 
         self.email_text = Label(frame, text='Email Address', font=FONT, bg='white')
-        self.email_text.grid(row=10, column=0, padx=20, pady=(5, 0), sticky=W)
+        self.email_text.grid(row=0, column=0, padx=20, pady=(352,0), sticky=NW)
         self.email_label = Label(frame, image=self.image35, border=0)
-        self.email_label.grid(row=11, column=0, padx=18, pady=0, sticky=W)
+        self.email_label.grid(row=0, column=0, padx=18, pady=(372,0), sticky=NW)
         self.email_entry = Entry(frame, width=36, border=0, font=FONT, fg=ENTRY_COLOUR)
-        self.email_entry.grid(row=11, column=0, padx=(27,0), pady=0, sticky=W)
+        self.email_entry.grid(row=0, column=0, padx=(27,0), pady=(378,0), sticky=NW)
 
 if __name__ == "__main__":
     root = tk.Tk()
