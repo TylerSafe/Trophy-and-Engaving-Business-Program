@@ -1,15 +1,15 @@
-# button creatin site: https://www.clickminded.com/button-generator/
-# button colour: red = #f35a5a, grey = #999999
-# other button details: bold, size 14, wid:125, height:29, rounded edges
-# pop up button details: bold, size 14, wid:70, height:29, rounded edges
-# generate application file: # pyinstaller --onefile -w Code_V4.01.py
-
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import *
 import os
 from openpyxl import load_workbook
 from PIL import Image, ImageDraw, ImageGrab
+from datetime import date
+from docx import Document
+from docx.shared import Cm, Pt
+import string
+import random
+import shutil
 
 PATH = os.path.abspath(".") # path to the folder containing the python file
 FONT = 'GoogleSans 11' # font used throughout the application
@@ -25,14 +25,24 @@ class Window:
         self.cus_history = CustomerHistory(frame)
         self.signature = Signature(frame)
         self.sheet = JobSheets(frame, master)
+        self.word_doc = WordDoc(frame, self.sheet, self.cus_search)
 
         # create heading
         self.heading = PhotoImage(file=PATH + '\\Resources\\Images\\heading_image.png')
         self.heading_label = Label(frame, image=self.heading, border=0)
         self.heading_label.grid(row=0, column=1, padx=(100,0), pady=0, rowspan=2, columnspan=1, sticky=NW)
 
+        # create clear all button
+        self.clear_image = PhotoImage(file=PATH + '\\Resources\\Images\\button_clear_all.png')
+        self.clear_button = Button(frame, image=self.clear_image, command=self.clear_all, border=0, bg='white', highlightthickness=0)
+        self.clear_button.grid(row=0, column=1, padx=(570, 0), pady=(600, 0), sticky=NW)
         
         frame.grid()
+
+    # clear all entry fields
+    def clear_all(self):
+        self.signature.clear_signature()
+        self.sheet.clear_entries()
 
     # create error message window
     def error_message(self, message):
@@ -126,6 +136,8 @@ class JobSheets:
         self.double11 = PhotoImage(file=PATH + '\\Resources\\Images\\double_11.png')
         self.double40 = PhotoImage(file=PATH + '\\Resources\\Images\\double_40.png')
         self.double4 = PhotoImage(file=PATH + '\\Resources\\Images\\double_4.png')
+        self.double_big = PhotoImage(file=PATH + '\\Resources\\Images\\double_big.png')
+        self.current_sheet = ''
         self.qty_entries = []
         self.num_entries = []
         self.sport_entries = []
@@ -142,19 +154,42 @@ class JobSheets:
         self.button_engraving = PhotoImage(file=PATH + '\\Resources\\Images\\engraving_sheet.png')
         self.engraving_button = Button(frame, image=self.button_engraving, command=self.engraving_sheet, border=0, bg='white', highlightthickness=0)
         self.engraving_button.grid(row=0, column=1, padx=(242,0), pady=(150, 0), sticky=NW)
-
+    
+    # delete relevant info from previous job sheet
+    def delete_info(self):
+        # clear all the entries
+        self.qty_entries = []
+        self.num_entries = []
+        self.sport_entries = []
+        self.details_entries = []
+        self.unit_entries = []
+        self.total_entries = []
+        
+        if self.current_sheet == 'trophy':    
+            self.qty_label.destroy()
+            self.trophy_num.destroy()
+            self.trophy_sport.destroy()
+            self.engrave_details.destroy()
+            self.unit_price.destroy()
+            self.total.destroy()
+        elif self.current_sheet == 'engraving':
+            self.qty_label.destroy()
+            self.engrave_details.destroy()
+        else:
+            pass
+            
     # implement scrollbar for the job sheet
     def scrollbar(self):        
         width = 845
-        height = 380
+        height = 230
         
-        scroll_frame = Frame(self.frame, width=width, height=height)
-        scroll_frame.place(x=370,y=330)
+        self.scroll_frame = Frame(self.frame, width=width, height=height)
+        self.scroll_frame.place(x=370,y=350)
 
-        self.my_canvas = Canvas(scroll_frame, width=width, height=height, bg='white', highlightthickness=0)
+        self.my_canvas = Canvas(self.scroll_frame, width=width, height=height, bg='white', highlightthickness=0)
         self.my_canvas.place(x=0,y=0)
         
-        self.my_scrollbar = ttk.Scrollbar(scroll_frame, orient=VERTICAL, command=self.my_canvas.yview)
+        self.my_scrollbar = ttk.Scrollbar(self.scroll_frame, orient=VERTICAL, command=self.my_canvas.yview)
         self.my_scrollbar.place(x=width-20, y=0, height=height)
 
         self.my_canvas.configure(yscrollcommand=self.my_scrollbar.set)
@@ -173,76 +208,114 @@ class JobSheets:
     # function that creates entry fields for extra info such as order numner, date, etc.
     def order_info(self):
         self.date = Label(self.frame, text='Date', font=FONT, bg='white')
-        self.date.grid(row=0, column=1, padx=(18,0), pady=(190, 0), sticky=NW)
+        self.date.grid(row=0, column=1, padx=(18,0), pady=(200, 0), sticky=NW)
         self.image15 = PhotoImage(file=PATH + '\\Resources\\Images\\entry_15.png')
         self.date_label = Label(self.frame, image=self.image15, border=0)
-        self.date_label.grid(row=0, column=1, padx=18, pady=(210, 0), sticky=NW)
+        self.date_label.grid(row=0, column=1, padx=18, pady=(220, 0), sticky=NW)
         self.date_entry = Entry(self.frame, width=15, border=0, font=FONT, fg=ENTRY_COLOUR)
-        self.date_entry.grid(row=0, column=1, padx=(23,0), pady=(215, 0), sticky=NW)
+        self.date_entry.grid(row=0, column=1, padx=(23,0), pady=(225, 0), sticky=NW)
+
+        # auto enter todays date
+        today = date.today()
+        d1 = today.strftime("%d/%m/%Y")
+        self.date_entry.insert(0, d1)
 
         self.req = Label(self.frame, text='Required Date', font=FONT, bg='white')
-        self.req.grid(row=0, column=1, padx=(185,0), pady=(190, 0), sticky=NW)
+        self.req.grid(row=0, column=1, padx=(185,0), pady=(200, 0), sticky=NW)
         self.req_label = Label(self.frame, image=self.image15, border=0)
-        self.req_label.grid(row=0, column=1, padx=(185,0), pady=(210, 0), sticky=NW)
+        self.req_label.grid(row=0, column=1, padx=(185,0), pady=(220, 0), sticky=NW)
         self.req_entry = Entry(self.frame, width=15, border=0, font=FONT, fg=ENTRY_COLOUR)
-        self.req_entry.grid(row=0, column=1, padx=(190,0), pady=(215, 0), sticky=NW)
+        self.req_entry.grid(row=0, column=1, padx=(190,0), pady=(225, 0), sticky=NW)
 
         self.contact = Label(self.frame, text='Contact', font=FONT, bg='white')
-        self.contact.grid(row=0, column=1, padx=(352,0), pady=(190, 0), sticky=NW)
+        self.contact.grid(row=0, column=1, padx=(352,0), pady=(200, 0), sticky=NW)
         self.contact_label = Label(self.frame, image=self.image15, border=0)
-        self.contact_label.grid(row=0, column=1, padx=(352,0), pady=(210, 0), sticky=NW)
+        self.contact_label.grid(row=0, column=1, padx=(352,0), pady=(220, 0), sticky=NW)
         self.contact_entry = Entry(self.frame, width=15, border=0, font=FONT, fg=ENTRY_COLOUR)
-        self.contact_entry.grid(row=0, column=1, padx=(357,0), pady=(215, 0), sticky=NW)
+        self.contact_entry.grid(row=0, column=1, padx=(357,0), pady=(225, 0), sticky=NW)
 
         self.order = Label(self.frame, text='Order Number', font=FONT, bg='white')
-        self.order.grid(row=0, column=1, padx=(18,0), pady=(244, 0), sticky=NW)
+        self.order.grid(row=0, column=1, padx=(18,0), pady=(254, 0), sticky=NW)
         self.order_label = Label(self.frame, image=self.image15, border=0)
-        self.order_label.grid(row=0, column=1, padx=18, pady=(264, 0), sticky=NW)
+        self.order_label.grid(row=0, column=1, padx=18, pady=(274, 0), sticky=NW)
         self.order_entry = Entry(self.frame, width=15, border=0, font=FONT, fg=ENTRY_COLOUR)
-        self.order_entry.grid(row=0, column=1, padx=(23,0), pady=(269, 0), sticky=NW)
+        self.order_entry.grid(row=0, column=1, padx=(23,0), pady=(279, 0), sticky=NW)
 
         self.invoice = Label(self.frame, text='Invoice Number', font=FONT, bg='white')
-        self.invoice.grid(row=0, column=1, padx=(185,0), pady=(244, 0), sticky=NW)
+        self.invoice.grid(row=0, column=1, padx=(185,0), pady=(254, 0), sticky=NW)
         self.invoice_label = Label(self.frame, image=self.image15, border=0)
-        self.invoice_label.grid(row=0, column=1, padx=(185,0), pady=(264, 0), sticky=NW)
+        self.invoice_label.grid(row=0, column=1, padx=(185,0), pady=(274, 0), sticky=NW)
         self.invoice_entry = Entry(self.frame, width=15, border=0, font=FONT, fg=ENTRY_COLOUR)
-        self.invoice_entry.grid(row=0, column=1, padx=(190,0), pady=(269, 0), sticky=NW)
+        self.invoice_entry.grid(row=0, column=1, padx=(190,0), pady=(279, 0), sticky=NW)
 
         self.team = Label(self.frame, text='Team Member', font=FONT, bg='white')
-        self.team.grid(row=0, column=1, padx=(352,0), pady=(244, 0), sticky=NW)
+        self.team.grid(row=0, column=1, padx=(352,0), pady=(254, 0), sticky=NW)
         self.team_label = Label(self.frame, image=self.image15, border=0)
-        self.team_label.grid(row=0, column=1, padx=(352,0), pady=(264, 0), sticky=NW)
+        self.team_label.grid(row=0, column=1, padx=(352,0), pady=(274, 0), sticky=NW)
         self.team_entry = Entry(self.frame, width=15, border=0, font=FONT, fg=ENTRY_COLOUR)
-        self.team_entry.grid(row=0, column=1, padx=(357,0), pady=(269, 0), sticky=NW)
+        self.team_entry.grid(row=0, column=1, padx=(357,0), pady=(279, 0), sticky=NW)
+
+        self.overall = Label(self.frame, text='Overall Price', font='GoogleSans 12 bold', bg='white', fg='#858585')
+        self.overall.grid(row=0, column=1, padx=(18,0), pady=(600, 0), sticky=NW)
+        self.overall_label = Label(self.frame, image=self.image15, border=0)
+        self.overall_label.grid(row=0, column=1, padx=(125,0), pady=(597, 0), sticky=NW)
+        self.overall_entry = Entry(self.frame, width=15, border=0, font=FONT, fg=ENTRY_COLOUR)
+        self.overall_entry.grid(row=0, column=1, padx=(130,0), pady=(602, 0), sticky=NW)
     
+    # create engraving sdheet entries/label and call scrollbar/row creation functions
+    def engraving_sheet(self):
+        # only create order info if it hasn't been created yet
+        if self.current_sheet == '':
+            self.order_info()
+        
+        # delete table headings if they exist (different headings between trophy and engraving)
+        self.delete_info()
+        self.current_sheet = 'engraving'
+
+        self.qty_label = Label(self.frame, text='Qty', font='GoogleSans 12 bold', bg='white', fg='#858585')
+        self.qty_label.grid(row=0, column=1, padx=(17,0), pady=(327, 0), sticky=NW)
+
+        self.engrave_details = Label(self.frame, text='Engraving Details', font='GoogleSans 12 bold', bg='white', fg='#858585')
+        self.engrave_details.grid(row=0, column=1, padx=(67,0), pady=(327, 0), sticky=NW)
+
+        self.scrollbar()
+        self.add_rows_engraving()
     
     # create trophy sheet entries/label and call scrollbar/row creation functions
     def trophy_sheet(self):
+        # only create order info if it hasn't been created yet
+        if self.current_sheet == '':
+            self.order_info()
+
+        # delete table headings if they exist (different headings between trophy and engraving)
+        self.delete_info()
+        self.current_sheet = 'trophy'
+
         # all trophy sheet headings
         self.qty_label = Label(self.frame, text='Qty', font='GoogleSans 12 bold', bg='white', fg='#858585')
-        self.qty_label.grid(row=0, column=1, padx=(17,0), pady=(307, 0), sticky=NW)
+        self.qty_label.grid(row=0, column=1, padx=(17,0), pady=(327, 0), sticky=NW)
 
         self.trophy_num = Label(self.frame, text='Trophy #', font='GoogleSans 12 bold', bg='white', fg='#858585')
-        self.trophy_num.grid(row=0, column=1, padx=(67,0), pady=(307, 0), sticky=NW)
+        self.trophy_num.grid(row=0, column=1, padx=(67,0), pady=(327, 0), sticky=NW)
 
         self.trophy_sport = Label(self.frame, text='Sport', font='GoogleSans 12 bold', bg='white', fg='#858585')
-        self.trophy_sport.grid(row=0, column=1, padx=(173,0), pady=(307, 0), sticky=NW)
+        self.trophy_sport.grid(row=0, column=1, padx=(173,0), pady=(327, 0), sticky=NW)
 
         self.engrave_details = Label(self.frame, text='Engraving Details', font='GoogleSans 12 bold', bg='white', fg='#858585')
-        self.engrave_details.grid(row=0, column=1, padx=(279,0), pady=(307, 0), sticky=NW)
+        self.engrave_details.grid(row=0, column=1, padx=(279,0), pady=(327, 0), sticky=NW)
 
         self.unit_price = Label(self.frame, text='Unit Price', font='GoogleSans 12 bold', bg='white', fg='#858585')
-        self.unit_price.grid(row=0, column=1, padx=(620,0), pady=(307, 0), sticky=NW)
+        self.unit_price.grid(row=0, column=1, padx=(620,0), pady=(327, 0), sticky=NW)
 
         self.total = Label(self.frame, text='Total', font='GoogleSans 12 bold', bg='white', fg='#858585')
-        self.total.grid(row=0, column=1, padx=(724,0), pady=(307, 0), sticky=NW)
+        self.total.grid(row=0, column=1, padx=(724,0), pady=(327, 0), sticky=NW)
 
         self.scrollbar()
-        self.order_info()
-        self.add_rows()
+        self.add_rows_trophy()
                 
-    # add entry rows for the chosen job sheet
-    def add_rows(self):
+    # add entry rows for the trophy job sheet
+    def add_rows_trophy(self):
+        self.second_frame.configure(height=62)
         for i in range(20):
             qty = Label(self.second_frame, image=self.double4, border=0)            
             qty.grid(row=i, column=0, padx=(5,0), pady=(0,0), sticky=NW)
@@ -275,10 +348,48 @@ class JobSheets:
             self.total_entries[i].grid(row=i, column=5, padx=(10,5), pady=(5,5), rowspan=1, sticky=NW)
         
             # adjust height of scrollbar frame
-            self.second_frame.configure(height=62 + (i * 62))
+            self.second_frame.configure(height=62 + (i * 46))
 
-    def engraving_sheet(self):
-        print('engraving sheet')
+    # add entry rows for engraving job sheet
+    def add_rows_engraving(self):
+        self.second_frame.configure(height=62)
+        for i in range(20):
+            qty = Label(self.second_frame, image=self.double4, border=0)            
+            qty.grid(row=i, column=0, padx=(5,0), pady=(0,0), sticky=NW)
+            self.qty_entries.append(Text(self.second_frame, width=4, height=2, border=0, font=FONT, fg=ENTRY_COLOUR))
+            self.qty_entries[i].grid(row=i, column=0, padx=(9,0), pady=(4,5), rowspan=1, sticky=NW)
+
+            details = Label(self.second_frame, image=self.double_big, border=0) 
+            details.grid(row=i, column=1, padx=(5,0), pady=(0,0), sticky=NW)
+            self.details_entries.append(Text(self.second_frame, width=88, height=2, border=0, font=FONT, fg=ENTRY_COLOUR))
+            self.details_entries[i].grid(row=i, column=1, padx=(10,0), pady=(5,5), rowspan=1, sticky=NW)
+
+            # adjust height of scrollbar frame
+            self.second_frame.configure(height=62 + (i * 46))
+
+    # clear all entry fields in the job sheet
+    def clear_entries(self):
+        if self.current_sheet == '':
+            pass
+        else:
+            # clear info fields
+            self.req_entry.delete(0, END)
+            self.contact_entry.delete(0, END)
+            self.order_entry.delete(0, END)
+            self.invoice_entry.delete(0, END)
+            self.team_entry.delete(0, END)
+            self.overall_entry.delete(0, END)
+
+            # clear all entry fields
+            for i in range(20):              
+                self.qty_entries[i].delete(1.0, END)
+                self.details_entries[i].delete(1.0, END)
+                
+                if self.current_sheet == 'trophy':
+                    self.num_entries[i].delete(1.0, END)
+                    self.sport_entries[i].delete(1.0, END)
+                    self.unit_entries[i].delete(1.0, END)
+                    self.total_entries[i].delete(1.0, END)
 
 
 # class that handles all signature field functionality
@@ -293,13 +404,20 @@ class Signature:
         
         # save a copy of the signature to the resources folder
         self.confirm_image = PhotoImage(file=PATH + '\\Resources\\Images\\confirm_sig.png')
-        self.confirm_button = Button(frame ,image=self.confirm_image, command=self.img.save(PATH + '\\Resources\\Images\\signature.png'), border=0, bg='white', highlightthickness=0)
+        self.confirm_button = Button(frame ,image=self.confirm_image, command=lambda:(self.img.save(PATH + '\\Resources\\signature.png')), border=0, bg='white', highlightthickness=0)
         self.confirm_button.grid(row=0, column=1, padx=(720,20), pady=(165, 0), sticky=NW)
 
         self.clear_image = PhotoImage(file=PATH + '\\Resources\\Images\\clear_sig.png')
-        self.clear_sig = Button(frame ,image=self.clear_image, command=lambda:(self.w.delete('all')), border=0, bg='white', highlightthickness=0)
+        self.clear_sig = Button(frame ,image=self.clear_image, command=self.clear_signature, border=0, bg='white', highlightthickness=0)
         self.clear_sig.grid(row=0, column=1, padx=(570,20), pady=(165, 0), sticky=NW)
         
+    # clear signature field
+    def clear_signature(self):
+        self.w.delete('all')
+        self.img = Image.new('RGB',(285,105), (255, 255, 255))
+        self.draw = ImageDraw.Draw(self.img)
+
+    
     # create signature field and implement functionality
     def signature(self, frame):    
         # image to make signature field look nice
@@ -311,7 +429,7 @@ class Signature:
         self.w = Canvas(frame, bg = 'white', highlightthickness=0, width=285, height = 105, name='signature field')
         self.w.grid(row=0, column=1, padx=(558,20), pady=(41, 0), rowspan=2, sticky=NW)
         self.img = Image.new('RGB',(285,105), (255, 255, 255))
-        draw = ImageDraw.Draw(self.img)
+        self.draw = ImageDraw.Draw(self.img)
 
         self.mousePressed = False
         self.last=None
@@ -338,7 +456,7 @@ class Signature:
                         if self.last is None:
                             self.last = (x,y)
                             return
-                        draw.line(((x,y),self.last), (0,0,0))
+                        self.draw.line(((x,y),self.last), (0,0,0))
                         self.w.create_line(x,y,self.last[0],self.last[1])
                         self.last = (x,y)
                     else:
@@ -390,7 +508,7 @@ class CustomerDetails:
         self.listbox.bind('<<ListboxSelect>>', self.autofill)
 
         # add button to clear search entry
-        self.clear_button = Button(frame, text='x', command=lambda:self.search_entry.delete(0, END), border=0, bg='white', fg='grey', font=FONT, highlightthickness=0)
+        self.clear_button = Button(frame, text='x', command=lambda:(self.search_entry.delete(0, END), self.update_listbox([])), border=0, bg='white', fg='grey', font=FONT, highlightthickness=0)
         self.clear_button.grid(row=0, column=0, padx=(291, 0), pady=(10, 2), sticky=NW)
 
         # create all entry fields with labels, cumbersome/lengthy code so moved out of __init__
@@ -636,6 +754,367 @@ class CustomerDetails:
         self.email_label.grid(row=0, column=0, padx=18, pady=(372,0), sticky=NW)
         self.email_entry = Entry(frame, width=36, border=0, font=FONT, fg=ENTRY_COLOUR)
         self.email_entry.grid(row=0, column=0, padx=(27,0), pady=(378,0), sticky=NW)
+
+# class that generates a formatted word document from entered details
+class WordDoc:
+    def __init__(self, frame, sheet, cus_details):
+        self.sheet = sheet
+        self.cus_details = cus_details
+
+        # button to save new sheet
+        self.button_save = PhotoImage(file=PATH + '\\Resources\\Images\\button_save.png')
+        self.save_button = Button(frame, image=self.button_save, command=self.save_sheet, border=0, bg='white', highlightthickness=0)
+        self.save_button.grid(row=0, column=1, padx=(725,0), pady=(595, 0), sticky=NW)
+    
+    # create the formatted word doc
+    # code is quite long/cumbersome but functions properly
+    def create_doc(self):
+        sheet_type = self.sheet.current_sheet
+        
+        # ensure a sheet is opened before saving
+        if sheet_type == '':
+            window.error_message('Error! Please open a sheet before saving')
+        else:
+            document = Document()
+            
+            #changing the page margins
+            sections = document.sections
+            for section in sections:
+                section.top_margin = Cm(1)
+                section.bottom_margin = Cm(1)
+                section.left_margin = Cm(1)
+                section.right_margin = Cm(1)
+        
+            # all word formatting, adding images, text, table etc
+            document.add_picture(PATH + '\\Resources\\heading_image.png')
+            
+            paragraph1 = document.add_paragraph()
+            paragraph1.alignment = 1
+            paragraph1.paragraph_format.space_before = Pt(3)
+            paragraph1.paragraph_format.space_after = Pt(1)
+            a1 = paragraph1.add_run('Customer: ')
+            font = a1.font
+            font.size = Pt(14)
+            a1.bold = True
+            a2 = paragraph1.add_run(self.check_empty(self.cus_details.name_entry.get()))
+            font = a2.font
+            font.size = Pt(14)
+                            
+            paragraph2 = document.add_paragraph()
+            paragraph2.alignment = 1
+            paragraph2.paragraph_format.space_before = Pt(1)
+            paragraph2.paragraph_format.space_after = Pt(1)
+            b1 = paragraph2.add_run('Address: ')
+            font = b1.font
+            font.size = Pt(14)
+            b1.bold = True
+            b2 = paragraph2.add_run(self.check_empty(self.cus_details.address_entry.get()))
+            font = b2.font
+            font.size = Pt(14)
+
+            paragraph3 = document.add_paragraph()
+            paragraph3.alignment = 1
+            paragraph3.paragraph_format.space_before = Pt(1)
+            paragraph3.paragraph_format.space_after = Pt(1)
+            c1 = paragraph3.add_run('State: ')
+            font = c1.font
+            font.size = Pt(14)
+            c1.bold = True
+            c2 = paragraph3.add_run(self.check_empty(self.cus_details.state_entry.get()))
+            font = c2.font
+            font.size = Pt(14)
+            c5 = paragraph3.add_run('       City: ')
+            font = c5.font
+            font.size = Pt(14)
+            c5.bold = True
+            c3 = paragraph3.add_run(self.check_empty(self.cus_details.city_entry.get()))
+            font = c3.font
+            font.size = Pt(14)
+            c6 = paragraph3.add_run('       Postcode: ')
+            font = c6.font
+            font.size = Pt(14)
+            c6.bold = True
+            c4 = paragraph3.add_run(self.check_empty(self.cus_details.postcode_entry.get()))
+            font = c4.font
+            font.size = Pt(14)
+
+            paragraph4 = document.add_paragraph()
+            paragraph4.alignment = 1
+            paragraph4.paragraph_format.space_before = Pt(1)
+            paragraph4.paragraph_format.space_after = Pt(1)
+            d1 = paragraph4.add_run('Phone: ')
+            font = d1.font
+            font.size = Pt(14)
+            d1.bold = True
+            d2 = paragraph4.add_run(self.check_empty(self.cus_details.phone_entry.get()))
+            font = d2.font
+            font.size = Pt(14)
+            d3 = paragraph4.add_run('       Email: ')
+            font = d3.font
+            font.size = Pt(14)
+            d3.bold = True
+            d4 = paragraph4.add_run(self.check_empty(self.cus_details.email_entry.get()))
+            font = d4.font
+            font.size = Pt(14)
+
+            paragraph5 = document.add_paragraph()
+            paragraph5.alignment = 1
+            paragraph5.paragraph_format.space_before = Pt(1)
+            paragraph5.paragraph_format.space_after = Pt(1)
+            e1 = paragraph5.add_run('Contact: ')
+            font = e1.font
+            font.size = Pt(14)
+            e1.bold = True
+            e2 = paragraph5.add_run(self.check_empty(self.sheet.contact_entry.get()))
+            font = e2.font
+            font.size = Pt(14)
+
+            paragraph_space = document.add_paragraph()
+            paragraph_space.alignment = 1
+            paragraph_space.paragraph_format.space_before = Pt(1)
+            paragraph_space.paragraph_format.space_after = Pt(1)
+            y1 = paragraph_space.add_run(' ')
+            font = y1.font
+            font.size = Pt(14)
+
+            paragraph6 = document.add_paragraph()
+            paragraph6.alignment = 1
+            paragraph6.paragraph_format.space_before = Pt(1)
+            paragraph6.paragraph_format.space_after = Pt(1)
+            f1 = paragraph6.add_run('    Date: ')
+            font = f1.font
+            font.size = Pt(14)
+            f1.bold = True
+            f2 = paragraph6.add_run(self.check_empty(self.sheet.date_entry.get()))
+            font = f2.font
+            font.size = Pt(14)
+            f3 = paragraph6.add_run('    Invoice No: ')
+            font = f3.font
+            font.size = Pt(14)
+            f3.bold = True
+            f4 = paragraph6.add_run(self.check_empty(self.sheet.invoice_entry.get()))
+            font = f4.font
+            font.size = Pt(14)   
+            f5 = paragraph6.add_run('    Order No: ')
+            font = f5.font
+            font.size = Pt(14)
+            f5.bold = True
+            f6 = paragraph6.add_run(self.check_empty(self.sheet.order_entry.get()))
+            font = f6.font
+            font.size = Pt(14)
+            
+            paragraph7 = document.add_paragraph()
+            paragraph7.alignment = 1
+            paragraph7.paragraph_format.space_before = Pt(1)
+            f7 = paragraph7.add_run('    Required by: ')
+            font = f7.font
+            font.size = Pt(14)
+            f7.bold = True
+            f8 = paragraph7.add_run(self.check_empty(self.sheet.req_entry.get()))
+            font = f8.font
+            font.size = Pt(14)
+
+            if sheet_type == 'trophy':
+                document.add_picture(PATH + '\\Resources\\trophy_middle.png')
+            elif sheet_type == 'engraving':
+                document.add_picture(PATH + '\\Resources\\xengraving_middle.png')
+
+            # get the number of entries to create the table
+            number_of_entries = 0
+
+            # the length of an empty text field is 1, so if the length is not 1, it is not empty and should be counted
+            for i in range(len(self.sheet.qty_entries)):
+                if len(self.sheet.qty_entries[i].get("1.0",END)) != 1:
+                    number_of_entries += 1
+
+            # create table based on sheet type
+            if sheet_type == 'trophy':
+                table = document.add_table(rows = (1 + number_of_entries), cols = 6)
+                table.alignment = 1
+                table.style = 'TableGrid'
+                hdr_cells = table.rows[0].cells
+                hdr_cells[0].text = 'QTY'
+                hdr_cells[0].width = Cm(1)
+                hdr_cells[1].text = 'TROPHY NO'
+                hdr_cells[1].width = Cm(3)
+                hdr_cells[2].text = 'SPORT'
+                hdr_cells[2].width = Cm(5)
+                hdr_cells[3].text = 'ENGRAVING DETAILS'
+                hdr_cells[3].width = Cm(25)
+                hdr_cells[4].text = 'UNIT PRICE'
+                hdr_cells[4].width = Cm(2.5)
+                hdr_cells[5].text = 'TOTAL'
+                hdr_cells[5].width = Cm(2.5)
+
+                # insert the given data into the table MUST HAVE QTY ENTERED FOR ALL ENTRIES
+                for i in range(number_of_entries):
+                    body_cells = table.rows[i+1].cells
+                    body_cells[0].text = self.sheet.qty_entries[i].get("1.0",END)
+                    body_cells[1].text = self.sheet.num_entries[i].get("1.0",END)
+                    body_cells[2].text = self.sheet.sport_entries[i].get("1.0",END)
+                    body_cells[3].text = self.sheet.details_entries[i].get("1.0",END)
+                    body_cells[4].text = self.sheet.unit_entries[i].get("1.0",END)
+                    body_cells[5].text = self.sheet.total_entries[i].get("1.0",END)
+            
+            elif sheet_type == 'engraving':
+                table = document.add_table(rows = (2 + number_of_entries), cols = 2)
+                table.alignment = 1
+                table.style = 'TableGrid'
+                hdr_cells = table.rows[0].cells
+                hdr_cells[0].text = 'QTY'
+                hdr_cells[0].width = Cm(1)
+                hdr_cells[1].text = 'ENGRAVING DETAILS'
+                hdr_cells[1].width = Cm(55)
+
+                # insert the given data into the table MUST HAVE QTY ENTERED FOR ALL ENTRIES
+                for i in range(number_of_entries):
+                    body_cells = table.rows[i+1].cells
+                    body_cells[0].text = self.sheet.qty_entries[i].get("1.0",END)
+                    body_cells[1].text = self.sheet.details_entries[i].get("1.0",END)
+
+                bottom_cells = table.rows[(number_of_entries + 1)].cells
+                bottom_cells[1].text = 'Material size:                          Setup/Engrave time:                          Extra labour time:                          '
+
+            document.add_picture(PATH + '\\Resources\\xspace.png')
+            
+            paragraph6 = document.add_paragraph()
+            f1 = paragraph6.add_run('CUSTOMER APPROVAL   ')
+            font = f1.font
+            font.size = Pt(14)
+            f1.bold = True
+            f2 = paragraph6.add_run('                                                                                        Overall: $')
+            font = f2.font
+            font.size = Pt(14)
+            f2.bold = True
+            f3 = paragraph6.add_run(self.check_empty(self.sheet.overall_entry.get()))
+            font = f3.font
+            font.size = Pt(14)
+            f3.bold = True
+            
+            #saveToCalendar(required_by_entry.get(), use_this_name, name_entry.get(), contact_entry.get().lower())
+
+            # check if signature has been created, if not give error message to confirm sheet has been signed
+            try:
+                document.add_picture(PATH + '\\Resources\\signature.png', width = Cm(5))
+                try:
+                    name = self.cus_details.name_entry.get()
+                    unique_name = self.create_name(name)
+                    
+                    if name == '\n':
+                        name == 'No name entered'
+                    
+                    # check if the folder exists, if not create it
+                    if sheet_type == 'trophy':
+                        if os.path.exists(PATH + '\\1. Job Sheets\\Trophy Jobsheets\\' + name):
+                            document.save(PATH + '\\1. Job Sheets\\Trophy Jobsheets\\' + name + '\\' + unique_name + '.docx')
+                        else:
+                            os.makedirs(PATH + '\\1. Job Sheets\\Trophy Jobsheets\\' + name)
+                            document.save(PATH + '\\1. Job Sheets\\Trophy Jobsheets\\' + name + '\\' + unique_name + '.docx')
+                    
+                    elif sheet_type == 'engraving':
+                        if os.path.exists(PATH + '\\1. Job Sheets\\Engraving Jobsheets\\' + name):
+                            document.save(PATH + '\\1. Job Sheets\\Engraving Jobsheets\\' + name + '\\' + unique_name + '.docx')
+                        else:
+                            os.makedirs(PATH + '\\1. Job Sheets\\Engraving Jobsheets\\' + name)
+                            document.save(PATH + '\\1. Job Sheets\\Engraving Jobsheets\\' + name + '\\' + unique_name + '.docx')
+
+                    self.save_data(name, unique_name)
+                    self.open_doc(unique_name, name)
+                except:
+                    window.error_message('Error! Could not save file')
+                
+                os.remove(PATH + '\\Resources\\signature.png')    
+            except:
+                window.error_message('Error! Please confirm signature')
+                
+    # open the requested document given the customers name and unique name    
+    def open_doc(self, doc_name, folder_name):
+        if doc_name[0] == 'T':
+            try:
+                os.startfile(PATH + '\\1. Job Sheets\\Trophy Jobsheets\\' + folder_name + '\\' + doc_name + '.docx')
+            except:
+                window.error_message('Error! File could not be found')
+                      
+        elif doc_name[0] == 'E':
+            try:
+                os.startfile(PATH + '\\1. Job Sheets\\Engraving Jobsheets\\' + folder_name + '\\' + doc_name + '.docx')
+            except:
+                window.error_message('Error! File could not be found')
+        else:
+            window.error_message('Error! File must start with a T or E')
+    
+    # create a unique name that contains the sheet type, date, customer name and a random 3 digit code
+    def create_name(self, name): 
+        cur_sheet = self.sheet.current_sheet
+        
+        if cur_sheet == 'trophy':
+            start = 'T'
+        else:
+            start = 'E'
+        
+        name_date = self.sheet.date_entry.get()
+        name_date_fixed = name_date.replace('/', '_')
+        new_name = start + name_date_fixed + '_' + name + self.id_generator()
+        fixed_new_name = new_name.replace(' ', '_')
+        
+        return fixed_new_name
+
+    # generate random 3 digit code for job sheet name to make unique
+    def id_generator(self, size=3, chars=string.ascii_uppercase + string.digits):
+        return ''.join(random.choice(chars) for _ in range(size))
+
+    # if field is empty, fill with spaces to allow for hand written entries
+    def check_empty(self, entry):
+        if entry == '':
+            entry = '                '
+        return entry
+
+    # save entered data to allow autofill, create word doc and open it
+    def save_sheet(self):
+        self.create_doc()
+
+    # save all the entered data to autofill excel doc to enable autofilling previous orders
+    def save_data(self, name, unique_name):
+        try:
+            # create a customer autofill excel doc if one doesn't exist
+            if os.path.exists(PATH + '\\Data\\Autofill\\' + name + '\\autofill_data.xlsx'):    
+                auto_f = load_workbook(PATH + '\\Data\\Autofill\\' + name + '\\autofill_data.xlsx')
+            else:
+                source = PATH + '\\Data\\Original\\autofill_data.xlsx'
+                destination = PATH + '\\Data\\Autofill\\' + name
+                os.makedirs(destination)
+                shutil.copy(source, destination)
+                auto_f = load_workbook(PATH + '\\Data\\Autofill\\' + name + '\\autofill_data.xlsx')
+            
+            auto_sheet = auto_f['Sheet1']
+            new_row = auto_sheet.max_row + 1
+
+            # on the next free row in the excel doc save the single entry data
+            auto_sheet.cell(column=1, row=new_row, value=unique_name)
+            auto_sheet.cell(column=2, row=new_row, value=self.sheet.req_entry.get())
+            auto_sheet.cell(column=3, row=new_row, value=self.sheet.order_entry.get())
+            auto_sheet.cell(column=4, row=new_row, value=self.sheet.invoice_entry.get())
+            auto_sheet.cell(column=5, row=new_row, value=self.sheet.contact_entry.get())
+            auto_sheet.cell(column=6, row=new_row, value=self.sheet.team_entry.get())
+            auto_sheet.cell(column=7, row=new_row, value=self.sheet.overall_entry.get())
+
+            # loop through the 20 trophy entries and save the data
+            col = 8
+            for i in range(20):
+                auto_sheet.cell(column=i+col, row=new_row, value=self.sheet.qty_entries[i].get("1.0",END))
+                auto_sheet.cell(column=i+3+col, row=new_row, value=self.sheet.details_entries[i].get("1.0",END))
+                if self.sheet.current_sheet == 'trophy':
+                    auto_sheet.cell(column=i+1+col, row=new_row, value=self.sheet.num_entries[i].get("1.0",END))
+                    auto_sheet.cell(column=i+2+col, row=new_row, value=self.sheet.sport_entries[i].get("1.0",END))
+                    auto_sheet.cell(column=i+4+col, row=new_row, value=self.sheet.unit_entries[i].get("1.0",END))
+                    auto_sheet.cell(column=i+5+col, row=new_row, value=self.sheet.total_entries[i].get("1.0",END))
+                col += 5
+            
+            # save and close the file
+            auto_f.save(PATH + '\\Data\\Autofill\\' + name + '\\autofill_data.xlsx')
+            auto_f.close()
+        except:
+            window.error_message('Error! No autofill data file found')
 
 if __name__ == "__main__":
     root = tk.Tk()
