@@ -21,11 +21,12 @@ class Window:
         frame = Frame(master, bg='white')
 
         # load classes
-        self.cus_search = CustomerDetails(frame, self)
-        self.cus_history = CustomerHistory(frame)
         self.signature = Signature(frame)
         self.sheet = JobSheets(frame, master)
-        self.word_doc = WordDoc(frame, self.sheet, self.cus_search)
+        self.word_doc = WordDoc(self.sheet)
+        self.cus_history = CustomerHistory(frame, self.word_doc)
+        self.cus_search = CustomerDetails(frame, self, self.cus_history, self.word_doc)
+        self.calendar = Calendar(frame)
 
         # create heading
         self.heading = PhotoImage(file=PATH + '\\Resources\\Images\\heading_image.png')
@@ -43,6 +44,10 @@ class Window:
     def clear_all(self):
         self.signature.clear_signature()
         self.sheet.clear_entries()
+        self.cus_search.clear_cus_entries()
+        self.cus_search.search_entry.delete(0, END)
+        self.cus_search.update_listbox([])
+        self.cus_history.clear_history()
 
     # create error message window
     def error_message(self, message):
@@ -127,6 +132,19 @@ class Window:
         win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
         win.deiconify()  
 
+# class that implements calendar functionality, assigning sheets to dates, sending notifications, etc.
+class Calendar:
+    def __init__(self, frame):
+        self.frame = frame
+
+        # button that creates the trophy sheet entries/labels
+        self.cal_image = PhotoImage(file=PATH + '\\Resources\\Images\\calendar_button.png')
+        self.calendar_button = Button(frame, image=self.cal_image, command=self.open_calendar, border=0, bg='white', highlightthickness=0)
+        self.calendar_button.grid(row=0, column=1, padx=(353,0), pady=(150, 0), sticky=NW)
+
+    def open_calendar(self):
+        print('open calendar')
+
 # class that generates fields for different job sheets
 class JobSheets:
     def __init__(self, frame, master):
@@ -148,12 +166,12 @@ class JobSheets:
         # button that creates the trophy sheet entries/labels
         self.button_trophy = PhotoImage(file=PATH + '\\Resources\\Images\\trophy_sheet.png')
         self.trophy_button = Button(frame, image=self.button_trophy, command=self.trophy_sheet, border=0, bg='white', highlightthickness=0)
-        self.trophy_button.grid(row=0, column=1, padx=(88,0), pady=(150, 0), sticky=NW)
+        self.trophy_button.grid(row=0, column=1, padx=(25,0), pady=(150, 0), sticky=NW)
 
         # button that creates the engraving sheet entries/labels
         self.button_engraving = PhotoImage(file=PATH + '\\Resources\\Images\\engraving_sheet.png')
         self.engraving_button = Button(frame, image=self.button_engraving, command=self.engraving_sheet, border=0, bg='white', highlightthickness=0)
-        self.engraving_button.grid(row=0, column=1, padx=(242,0), pady=(150, 0), sticky=NW)
+        self.engraving_button.grid(row=0, column=1, padx=(179,0), pady=(150, 0), sticky=NW)
     
     # delete relevant info from previous job sheet
     def delete_info(self):
@@ -469,16 +487,104 @@ class Signature:
 
 # class that handles display and saving of previous customer orders, including autofill
 class CustomerHistory:
-    def __init__(self, frame):
+    def __init__(self, frame, word_doc):
+        self.word_doc = word_doc
+        self.frame = frame
+        self.cus_labels = []
+        self.cus_sheets = []
+        self.cus_autofill = []
+        self.cus_calendar = []
+        self.sheet_image = PhotoImage(file=PATH + '\\Resources\\Images\\cus_sheet.png')
+        self.autofill_image = PhotoImage(file=PATH + '\\Resources\\Images\\cus_autofill.png')
+        self.calendar_image = PhotoImage(file=PATH + '\\Resources\\Images\\cus_calendar.png')
+        
         self.history = Label(frame, text='Previous Orders', font='GoogleSans 12 bold', bg='white', fg='#858585')
         self.history.grid(row=0, column=0, padx=20, pady=(485, 0), sticky=NW)
 
+    # display names along with buttons to open, autofill and save to calendar
+    def show_history(self, name):
+        self.clear_history()
+        self.name = name
+        self.cus_labels = []
+        self.cus_sheets = []
+        self.cus_autofill = []
+        self.cus_calendar = []
+        # get customer history
+        self.get_history()
+        self.display_name()
+
+        # display unique customer names with buttons
+        for i in range(len(self.cus_history_fixed)):
+            self.cus_labels.append(Label(self.frame, text=self.cus_history_fixed[i], border=0, font=FONT, width=16, bg='white'))
+            self.cus_labels[i].grid(row=0, column=0, padx=(20,0), pady=(512 + (i * 25), 0), sticky=NW)
+
+            # button to open specified sheet
+            self.cus_sheets.append(Button(self.frame, image=self.sheet_image, border=0, bg='white', highlightthickness=0, command=lambda i=i:self.word_doc.open_doc(self.cus_history[i], self.name)))
+            self.cus_sheets[i].grid(row=0, column=0, padx=(175,0), pady=(512 + (i * 25), 0), sticky=NW)
+
+            # button to autofill data from specified sheet
+            self.cus_autofill.append(Button(self.frame, image=self.autofill_image, border=0, bg='white', highlightthickness=0, command=lambda i=i:self.word_doc.autofill(self.cus_history[i], self.name)))
+            self.cus_autofill[i].grid(row=0, column=0, padx=(230,0), pady=(512 + (i * 25), 0), sticky=NW)
+
+            # button to add order to calendar
+            self.cus_calendar.append(Button(self.frame, image=self.calendar_image, border=0, bg='white', highlightthickness=0, command=lambda:print('calendar')))
+            self.cus_calendar[i].grid(row=0, column=0, padx=(285,0), pady=(512 + (i * 25), 0), sticky=NW)
+
+    # remove previous customer history
+    def clear_history(self):
+        for i in range(len(self.cus_labels)):
+            self.cus_labels[i].destroy()
+            self.cus_sheets[i].destroy()
+            self.cus_autofill[i].destroy()
+            self.cus_calendar[i].destroy()
+
+    # alter the customer name for display purposes
+    def display_name(self):
+        self.cus_history_fixed = []
+        for i in range(len(self.cus_history)):
+            sheet = self.cus_history[i][:1]
+            day = self.cus_history[i][1:3]
+            month = self.cus_history[i][4:6]
+            year = self.cus_history[i][9:11]
+
+            self.cus_history_fixed.append(sheet + ' ' + day + '/' + month + '/' + year + ' ' + self.cus_history[i][12:22])
+    
+    # get the unique names of the last 5 orders if they exist
+    def get_history(self):
+        self.cus_history = []
+        # create a customer autofill excel doc if one doesn't exist
+        if os.path.exists(PATH + '\\Data\\Autofill\\' + self.name + '\\autofill_data.xlsx'):    
+            auto_f = load_workbook(PATH + '\\Data\\Autofill\\' + self.name + '\\autofill_data.xlsx')
+        else:
+            source = PATH + '\\Data\\Original\\autofill_data.xlsx'
+            destination = PATH + '\\Data\\Autofill\\' + self.name
+            os.makedirs(destination)
+            shutil.copy(source, destination)
+            auto_f = load_workbook(PATH + '\\Data\\Autofill\\' + self.name + '\\autofill_data.xlsx')
+        
+        auto_sheet = auto_f['Sheet1']
+        last_row = auto_sheet.max_row
+
+        # get the unique names of the last 5 orders if they exist
+        for i in range(5):
+            current_row = last_row - i
+            if current_row <= 2:
+                pass
+            else:
+                self.cus_history.append(auto_sheet.cell(row=current_row, column=1).value)
+        
+        # save and close the file
+        auto_f.save(PATH + '\\Data\\Autofill\\' + self.name + '\\autofill_data.xlsx')
+        auto_f.close()
+        
 
 # class that handles searching customers by name, retrieving information, creating new customers, deleting customers, and updating customer information
 class CustomerDetails:
-    def __init__(self, frame, window):
+    def __init__(self, frame, window, customer_history, sheet):
         # load all customer names from excel doc
+        self.sheet = sheet
         self.cus_names = []
+        self.customer_history = customer_history
         try:
             wb = load_workbook(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
             ws = wb['Sheet1']  
@@ -533,6 +639,12 @@ class CustomerDetails:
         self.cus_del = PhotoImage(file=PATH + '\\Resources\\Images\\delete_customer.png')
         self.del_button = Button(frame, image=self.cus_del, command=self.delete_customer, border=0, bg='white', highlightthickness=0)
         self.del_button.grid(row=0, column=0, padx=(182, 0), pady=(447, 5), sticky=NW)
+
+        # button to save new sheet
+        self.button_save = PhotoImage(file=PATH + '\\Resources\\Images\\button_save.png')
+        self.save_button = Button(frame, image=self.button_save, command=lambda:self.sheet.create_doc(self.name_entry.get(), self.address_entry.get(), self.state_entry.get(), 
+                           self.city_entry.get(), self.postcode_entry.get(), self.phone_entry.get(), self.email_entry.get()), border=0, bg='white', highlightthickness=0)
+        self.save_button.grid(row=0, column=1, padx=(725,0), pady=(595, 0), sticky=NW)
 
     # checks if customer is in list and confirms edit
     def edit_customer(self):
@@ -672,11 +784,13 @@ class CustomerDetails:
             self.search_entry.configure(foreground='grey')
             self.search_entry.insert(END, 'Search for a Customer')
         
-        if self.search_entry.get() != 'Search for a Customer':
+        entry_name = self.search_entry.get()
+
+        if entry_name != 'Search for a Customer':
             try:
                 # autofill customer information
                 self.clear_cus_entries()
-                row = self.cus_names.index(self.search_entry.get()) + 2
+                row = self.cus_names.index(entry_name) + 2
 
                 wb = load_workbook(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
                 ws = wb['Sheet1']  
@@ -699,6 +813,9 @@ class CustomerDetails:
                 wb.close()
             except:
                 window.error_message('Error! Customer List Not Found')
+
+            # when name selected also display previous orders
+            self.customer_history.show_history(entry_name)
 
 
     # creates all customer entry fields and labels
@@ -757,18 +874,12 @@ class CustomerDetails:
 
 # class that generates a formatted word document from entered details
 class WordDoc:
-    def __init__(self, frame, sheet, cus_details):
+    def __init__(self, sheet):
         self.sheet = sheet
-        self.cus_details = cus_details
-
-        # button to save new sheet
-        self.button_save = PhotoImage(file=PATH + '\\Resources\\Images\\button_save.png')
-        self.save_button = Button(frame, image=self.button_save, command=self.save_sheet, border=0, bg='white', highlightthickness=0)
-        self.save_button.grid(row=0, column=1, padx=(725,0), pady=(595, 0), sticky=NW)
     
     # create the formatted word doc
     # code is quite long/cumbersome but functions properly
-    def create_doc(self):
+    def create_doc(self, name, address, state, city, postcode, phone, email):
         sheet_type = self.sheet.current_sheet
         
         # ensure a sheet is opened before saving
@@ -796,7 +907,7 @@ class WordDoc:
             font = a1.font
             font.size = Pt(14)
             a1.bold = True
-            a2 = paragraph1.add_run(self.check_empty(self.cus_details.name_entry.get()))
+            a2 = paragraph1.add_run(self.check_empty(name))
             font = a2.font
             font.size = Pt(14)
                             
@@ -808,7 +919,7 @@ class WordDoc:
             font = b1.font
             font.size = Pt(14)
             b1.bold = True
-            b2 = paragraph2.add_run(self.check_empty(self.cus_details.address_entry.get()))
+            b2 = paragraph2.add_run(self.check_empty(address))
             font = b2.font
             font.size = Pt(14)
 
@@ -820,21 +931,21 @@ class WordDoc:
             font = c1.font
             font.size = Pt(14)
             c1.bold = True
-            c2 = paragraph3.add_run(self.check_empty(self.cus_details.state_entry.get()))
+            c2 = paragraph3.add_run(self.check_empty(state))
             font = c2.font
             font.size = Pt(14)
             c5 = paragraph3.add_run('       City: ')
             font = c5.font
             font.size = Pt(14)
             c5.bold = True
-            c3 = paragraph3.add_run(self.check_empty(self.cus_details.city_entry.get()))
+            c3 = paragraph3.add_run(self.check_empty(city))
             font = c3.font
             font.size = Pt(14)
             c6 = paragraph3.add_run('       Postcode: ')
             font = c6.font
             font.size = Pt(14)
             c6.bold = True
-            c4 = paragraph3.add_run(self.check_empty(self.cus_details.postcode_entry.get()))
+            c4 = paragraph3.add_run(self.check_empty(postcode))
             font = c4.font
             font.size = Pt(14)
 
@@ -846,14 +957,14 @@ class WordDoc:
             font = d1.font
             font.size = Pt(14)
             d1.bold = True
-            d2 = paragraph4.add_run(self.check_empty(self.cus_details.phone_entry.get()))
+            d2 = paragraph4.add_run(self.check_empty(phone))
             font = d2.font
             font.size = Pt(14)
             d3 = paragraph4.add_run('       Email: ')
             font = d3.font
             font.size = Pt(14)
             d3.bold = True
-            d4 = paragraph4.add_run(self.check_empty(self.cus_details.email_entry.get()))
+            d4 = paragraph4.add_run(self.check_empty(email))
             font = d4.font
             font.size = Pt(14)
 
@@ -1069,10 +1180,6 @@ class WordDoc:
             entry = '                '
         return entry
 
-    # save entered data to allow autofill, create word doc and open it
-    def save_sheet(self):
-        self.create_doc()
-
     # save all the entered data to autofill excel doc to enable autofilling previous orders
     def save_data(self, name, unique_name):
         try:
@@ -1115,6 +1222,59 @@ class WordDoc:
             auto_f.close()
         except:
             window.error_message('Error! No autofill data file found')
+
+    # autofill the data from the excel doc
+    def autofill(self, unique_name, name):
+        
+        auto_f = load_workbook(PATH + '\\Data\\Autofill\\' + name + '\\autofill_data.xlsx')
+        auto_sheet = auto_f['Sheet1']
+        last_row = auto_sheet.max_row
+        self.autofill_data = []
+
+        # iterate through the unique names until the required one is found, then append the data to autofill
+        for i in range(last_row):
+            if auto_sheet.cell(column=1, row=i+1).value == unique_name:
+                self.autofill_data.append([auto_sheet.cell(column=j+1, row=i+1).value for j in range(127)])
+        
+        auto_f.close()
+
+        # ensure there is data autofilled
+        if self.autofill_data != []:
+            try:
+                # check for None values as they cause errors
+                self.check_none_entry(1, self.sheet.req_entry)
+                self.check_none_entry(2, self.sheet.order_entry)
+                self.check_none_entry(3, self.sheet.invoice_entry)
+                self.check_none_entry(4, self.sheet.contact_entry)
+                self.check_none_entry(5, self.sheet.team_entry)
+                self.check_none_entry(6, self.sheet.overall_entry)
+
+                # loop through the 20 trophy entries and autofill the data, removing old data
+                pos = 7
+                for i in range(20):
+                    self.check_none_text(pos, self.sheet.qty_entries[i])
+                    self.check_none_text(pos+3, self.sheet.details_entries[i])
+                    if self.sheet.current_sheet == 'trophy':
+                        self.check_none_text(pos+1, self.sheet.num_entries[i])
+                        self.check_none_text(pos+2, self.sheet.sport_entries[i])
+                        self.check_none_text(pos+4, self.sheet.unit_entries[i])
+                        self.check_none_text(pos+5, self.sheet.total_entries[i])
+                    pos += 6
+            except:
+                window.error_message('Error! You must select a sheet before autofilling')
+    
+    # check that values aren't none to avoid errors
+    def check_none_entry(self, position, field):
+        field.delete(0,END)
+        if self.autofill_data[0][position] != None:
+            field.insert(0, self.autofill_data[0][position])
+
+    # check that values aren't none to avoid errors
+    def check_none_text(self, position, field):
+        field.delete(1.0,END)
+        if self.autofill_data[0][position] != None:
+            field.insert(1.0, self.autofill_data[0][position])
+    
 
 if __name__ == "__main__":
     root = tk.Tk()
