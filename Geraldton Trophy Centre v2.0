@@ -3,7 +3,8 @@ import tkinter.ttk as ttk
 from tkinter import *
 import os
 from openpyxl import load_workbook
-from PIL import Image, ImageDraw, ImageGrab
+from openpyxl import Workbook
+from PIL import Image, ImageDraw
 from datetime import date
 from docx import Document
 from docx.shared import Cm, Pt
@@ -26,7 +27,7 @@ class Window:
         self.word_doc = WordDoc(self.sheet)
         self.cus_history = CustomerHistory(frame, self.word_doc)
         self.cus_search = CustomerDetails(frame, self, self.cus_history, self.word_doc)
-        self.calendar = Calendar(frame)
+        self.calendar = Calendar(frame, self, self.word_doc)
 
         # create heading
         self.heading = PhotoImage(file=PATH + '\\Resources\\Images\\heading_image.png')
@@ -49,49 +50,35 @@ class Window:
         self.cus_search.update_listbox([])
         self.cus_history.clear_history()
 
-    # create error message window
-    def error_message(self, message):
-        self.error = Toplevel()
-        self.error.title('Error')
-        self.error.geometry('')
-        self.error.configure(background='white')
-        self.error.iconbitmap(PATH + '\\Resources\\Images\\logo.ico')
+    # create a pop up window, used for error messages, confirmation messages, displaying notes
+    def pop_up_window(self, message, title):
+        self.new_window = Toplevel()
+        self.new_window.title(title)
+        self.new_window.geometry('')
+        self.new_window.configure(background='white')
+        self.new_window.iconbitmap(PATH + '\\Resources\\Images\\logo.ico')
 
-        self.error_image = PhotoImage(file=PATH + '\\Resources\\Images\\error_cross.png')
-        self.error_cross = Label(self.error, image=self.error_image, border=0)
-        self.error_cross.grid(row=0, column=0, padx=(15, 0), pady=15, sticky=E)
-        self.error_label = Label(self.error, text=message, font=FONT, bg='white')
-        self.error_label.grid(row=0, column=1, padx=(5, 15), pady=(15, 15), sticky=W)
+        # set the image to be displayed based on the title of the window (easier to do here than each time the function is called)
+        if title == 'Error':
+            self.image = PhotoImage(file=PATH + '\\Resources\\Images\\error_cross.png')
+        elif title == 'Confirmation':
+            self.image = PhotoImage(file=PATH + '\\Resources\\Images\\confirm_tick.png')
+        else:
+            self.image = PhotoImage(file=PATH + '\\Resources\\Images\\note_image.png')
 
+        # display an image along with the message
+        self.image_label = Label(self.new_window, image=self.image, border=0)
+        self.image_label.grid(row=0, column=0, padx=(15, 0), pady=15, sticky=E)
+        self.message_label = Label(self.new_window, text=message, font=FONT, bg='white')
+        self.message_label.grid(row=0, column=1, padx=(5, 15), pady=(15, 15), sticky=W)
+
+        # create an ok button as another way to close the window when clicked
         self.button_image = PhotoImage(file=PATH + '\\Resources\\Images\\button_ok.png')
-        self.error_button = Button(self.error, image=self.button_image, command=self.error.destroy, border=0, bg='white', highlightthickness=0)
+        self.ok_button = Button(self.new_window, image=self.button_image, command=self.new_window.destroy, border=0, bg='white', highlightthickness=0)
+        self.ok_button.grid(row=1, column=0, columnspan=2, padx=10, pady=(5, 15), sticky=N)
 
-        self.error_button.grid(row=1, column=0, columnspan=2, padx=10, pady=(5, 15), sticky=N)
-
-        self.error.attributes('-topmost', 'true')
-        self.center(self.error)
-
-    # create confirmation message window
-    def confirm_message(self, message):
-        self.confirm = Toplevel()
-        self.confirm.title('Confirmation')
-        self.confirm.geometry('')
-        self.confirm.configure(background='white')
-        self.confirm.iconbitmap(PATH + '\\Resources\\Images\\logo.ico')
-
-        self.confirm_image = PhotoImage(file=PATH + '\\Resources\\Images\\confirm_tick.png')
-        self.confirm_tick = Label(self.confirm, image=self.confirm_image, border=0)
-        self.confirm_tick.grid(row=0, column=0, padx=(15, 0), pady=15, sticky=E)
-        self.confirm_label = Label(self.confirm, text=message, font=FONT, bg='white')
-        self.confirm_label.grid(row=0, column=1, padx=(5, 15), pady=(15, 15), sticky=W)
-
-        self.button_image = PhotoImage(file=PATH + '\\Resources\\Images\\button_ok.png')
-        self.confirm_button = Button(self.confirm, image=self.button_image, command=self.confirm.destroy, border=0, bg='white', highlightthickness=0)
-
-        self.confirm_button.grid(row=1, column=0, columnspan=2, padx=10, pady=(5, 15), sticky=N)
-
-        self.confirm.attributes('-topmost', 'true')
-        self.center(self.confirm)
+        self.new_window.attributes('-topmost', 'true')
+        self.center(self.new_window)
 
     # give the customer a choice between two options (ok/cancel)
     def option_message(self, message, function):
@@ -134,16 +121,561 @@ class Window:
 
 # class that implements calendar functionality, assigning sheets to dates, sending notifications, etc.
 class Calendar:
-    def __init__(self, frame):
+    def __init__(self, frame, window, word_doc):
         self.frame = frame
+        self.window = window
+        self.word_doc = word_doc
 
         # button that creates the trophy sheet entries/labels
         self.cal_image = PhotoImage(file=PATH + '\\Resources\\Images\\calendar_button.png')
         self.calendar_button = Button(frame, image=self.cal_image, command=self.open_calendar, border=0, bg='white', highlightthickness=0)
         self.calendar_button.grid(row=0, column=1, padx=(353,0), pady=(150, 0), sticky=NW)
 
-    def open_calendar(self):
-        print('open calendar')
+    # create the calendar window
+    def open_calendar(self):        
+        self.cal_window = Toplevel()
+        height = 500
+        width = 900
+        self.cal_window.title("Calendar")
+        self.cal_window.geometry('900x500')
+        self.cal_window.configure(background='white')
+        self.cal_window.iconbitmap(PATH + '\\Resources\\Images\\logo.ico')
+
+        # add a scrollbar to the window
+        main_frame = Frame(self.cal_window, width=width, height=height)
+        main_frame.place(x=0,y=0)
+
+        my_canvas = Canvas(main_frame, width=width, height=height)
+        my_canvas.place(x=0,y=0)
+        
+        my_scrollbar = ttk.Scrollbar(main_frame, orient=VERTICAL, command=my_canvas.yview)
+        my_scrollbar.place(x=880, y=0, height=height)
+
+        my_canvas.configure(yscrollcommand=my_scrollbar.set)
+        my_canvas.bind('<Configure>', lambda e: my_canvas.configure(scrollregion = my_canvas.bbox("all")))
+        
+        def _on_mouse_wheel(event):
+            my_canvas.yview_scroll(-1 * int((event.delta / 120)), "units")
+        
+        my_canvas.bind_all("<MouseWheel>", _on_mouse_wheel)
+        
+        self.second_frame = Frame(my_canvas,width=width,height=135)
+        self.second_frame.place(x=0,y=0) 
+        
+        my_canvas.create_window((0,0), window=self.second_frame, anchor="nw")
+
+        self.load_calendar()
+
+        self.window.center(self.cal_window)
+
+    # load details from excel file
+    def load_calendar(self):
+        if not os.path.exists(PATH + '\\Data\\Original\\calendar.xlsx'):
+            wb = Workbook()
+            wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
+            wb.close()
+
+        # get relevant information from excel file
+        wb = load_workbook(PATH + '\\Data\\Original\\calendar.xlsx')
+        ws = wb['Sheet']
+        date = ws['A']
+        search_name = ws['B']
+        name = ws['C']
+        notes = ws['D']
+        contact1 = ws['E']
+        contact2 = ws['F']
+        contact3 = ws['G']
+        date_fixed = []
+
+        # get every row of data
+        date1 = [date[x].value for x in range(len(name))]
+        del date1[0]
+        search_name1 = [search_name[x].value for x in range(len(name))]
+        del search_name1[0]
+        name1 = [name[x].value for x in range(len(name))]
+        del name1[0]
+        notes1 = [notes[x].value for x in range(len(name))]
+        del notes1[0]
+        contact1x = [contact1[x].value for x in range(len(name))]
+        del contact1x[0]
+        contact2x = [contact2[x].value for x in range(len(name))]
+        del contact2x[0]
+        contact3x = [contact3[x].value for x in range(len(name))]
+        del contact3x[0]
+
+        # clean up the date for easy sorting
+        for i in range(len(date1)):
+            date = self.clean_date(date1[i])
+            date_fixed.append(date)
+
+        # sort all lists by date
+        try:
+            date_fixed, search_name1, name1, contact1x, contact2x, contact3x, notes1 = (list(t) for t in zip(*sorted(zip(date_fixed, search_name1, name1, contact1x, contact2x, contact3x, notes1))))
+        except:
+            self.window.pop_up_window('Error! No calendar information available', 'Error')
+
+        # format calendar display
+        calendar_heading = Label(self.second_frame, text = 'Calendar')
+        calendar_heading.config(font =("Courier bold", 18))
+        calendar_heading.place(x = 20, y = 10)
+
+        if len(date_fixed) != 0:
+            # figure out if there is a required by date in order to place the heading
+            if date_fixed[0] == '00000000' or self.readable_date(date_fixed[0]) == 'incorrect date format':
+                heading = Label(self.second_frame, text = 'No Required by Date')
+                heading.config(font =("Courier", 15))
+                heading.place(x = 20, y = 70)
+            else:
+                heading = Label(self.second_frame, text = self.readable_date(date_fixed[0]))
+                heading.config(font =("Courier", 15))
+                heading.place(x = 20, y = 70)
+
+        position = 0
+
+        # loop through all orders in the calendar and display them along with the buttons for functionality
+        for i in range(len(date_fixed)):
+            order_button = Button(self.second_frame, width = 33, bg='#e1e5eb', text=name1[i], command = lambda i=i: self.word_doc.open_doc(search_name1[i], name1[i]))
+            order_button.place(x = 70, y = 96 + (i * 26) + position)
+            
+            # if there is a note attached to the order change the colour of the button to indicate there is a note
+            if notes1[i] != None:
+                notes = Button(self.second_frame, width = 10, bg='#B3B7BC', text='Notes', command = lambda i=i: self.view_note(search_name1[i], ws))
+            else:
+                notes = Button(self.second_frame, width = 10, bg='#e1e5eb', text='Notes', command = lambda i=i: self.view_note(search_name1[i], ws))
+            
+            notes.place(x = 320, y = 96 + (i * 26) + position)
+
+            add_note = Button(self.second_frame, width = 10, bg='#e1e5eb', text='Add Note', command = lambda i=i: self.add_note(search_name1[i], ws, wb))
+            add_note.place(x = 400, y = 96 + (i * 26) + position)
+
+            add_contact = Button(self.second_frame, width = 10, bg='#e1e5eb', text='Add Contact', command = lambda i=i: self.edit_contact(search_name1[i], ws, wb, 'add'))
+            add_contact.place(x = 490, y = 96 + (i * 26) + position)
+
+            remove_contact = Button(self.second_frame, width = 13, bg='#e1e5eb', text='Remove Contact', command = lambda i=i: self.edit_contact(search_name1[i], ws, wb, 'remove'))
+            remove_contact.place(x = 570, y = 96 + (i * 26) + position)
+
+            change_date = Button(self.second_frame, width = 10, bg='#e1e5eb', text='Change Date', command = lambda i=i: self.change_date(search_name1[i], name1[i], ws, wb))
+            change_date.place(x = 680, y = 96 + (i * 26) + position)
+            
+            complete_button = Button(self.second_frame, width = 10, bg='#e1e5eb', text='Complete', command = lambda i=i: removeOrder(new_window, search_name1[i], ws, wb))
+            complete_button.place(x = 770, y = 96 + (i * 26) + position)
+            
+            # determine if a team member is assigned to the order, if so display thier colour next to the order
+            if contact1x[i] != None and contact1x[i] != ' ':
+                self.set_contact(self.second_frame, contact1x[i], 23, 101 + (i * 26) + position)
+            if contact2x[i] != None and contact2x[i] != ' ':
+                self.set_contact(self.second_frame, contact2x[i], 35, 101 + (i * 26) + position)
+            if contact3x[i] != None and contact3x[i] != ' ':
+                self.set_contact(self.second_frame, contact3x[i], 47, 101 + (i * 26) + position)
+
+            # add height for the scroll bar area
+            self.second_frame.configure(height=135 + (i * 26) + position)
+            
+            # check if the next order has a different date, if so display the new date, otherwise keep it under the same heading
+            if i != len(date_fixed) - 1 and date_fixed[i] != date_fixed[i + 1] and self.readable_date(date_fixed[i + 1]) != 'incorrect date format':
+                heading = Label(self.second_frame, text = self.readable_date(date_fixed[i + 1]))
+                heading.config(font =("Courier", 15))
+                position += 35
+                heading.place(x = 20, y = 96 + (i * 26) + position)
+                self.second_frame.configure(height=135 + (i * 26) + position)
+
+        wb.close()
+
+    # edit word doc with the new required by date
+    def change_required(self, search_name, name, date): 
+        try:
+            if search_name[0] == 'T':
+                path = PATH + '\\1. Job Sheets\\Trophy Jobsheets\\' + name + '\\' + search_name + '.docx'            
+        
+            elif search_name[0] == 'E':
+                path = PATH + '\\1. Job Sheets\\Engraving Jobsheets\\' + name + '\\' + search_name + '.docx'
+                
+            document = Document(path)
+
+            for paragraph in document.paragraphs:
+                if '    Required by: ' in paragraph.text:
+                    paragraph.text = ''
+                    paragraph.alignment = 1
+                    paragraph.paragraph_format.space_before = Pt(1)
+                    f7 = paragraph.add_run('    Required by: ')
+                    font = f7.font
+                    font.size = Pt(14)
+                    f7.bold = True
+                    f8 = paragraph.add_run(date)
+                    font = f8.font
+                    font.size = Pt(14)
+
+            document.save(path)
+        except:
+            self.window.pop_up_window('Unable to find word document', 'Error')
+
+    # change the required by date of a selected order in the calendar excel file
+    def submit_date(self, new_window, search_name, name, date_entry, ws, wb):
+        row = ws.max_row
+        date = self.clean_date(date_entry)
+        date_done = self.readable_date(date)
+            
+        for i in range(1, row + 1):
+            if ws.cell(column=2, row=i).value == search_name:
+                ws.cell(column=1, row=i, value=date_done)
+                break
+
+        wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
+
+        self.change_required(search_name, name, date_done)
+
+        new_window.destroy()
+        self.cal_window.destroy()
+        self.open_calendar()
+        self.window.pop_up_window('Successfully changed the required by date', 'Confirmation')
+    
+    # create window to change the required by date of a selected order
+    def change_date(self, search_name, name, ws, wb):
+        new_window = Toplevel()
+        new_window.title("Change Date")
+        new_window.geometry("460x110")
+
+        date_label = Label(new_window, text = "New Required By Date (DD/MM/YYYY):", font=FONT)
+        date_label.place(x = 20, y = 10)
+
+        date_entry = Entry(new_window, width = 25)
+        date_entry.place(x = 145, y = 40)
+
+        submit_button = Button(new_window, width = 10, bg='#e1e5eb', text='Submit', command = lambda: self.submit_date(new_window, search_name, name, date_entry.get(), ws, wb))
+        submit_button.place(x = 185, y = 70)
+
+        self.window.center(new_window)
+    
+    # clean up the date for easy sorting
+    def clean_date(self, date):     
+        if date is not None:  
+            if '/' in date[0:2]:
+                date = '0' + date      
+            if '/' in date[3:5]:
+                date = date[0:3] + '0' + date[3:len(date)]
+            if len(date) == 8:
+                date = date[0:6] + '20' + date[6:8]
+
+            date = date.replace('/', '')
+
+            day = date[0:2]
+            month = date[2:4]
+            year = date[4:8]
+
+            return year + month + day
+        else:
+            date = '00000000'
+        return date
+
+    # change date format for display
+    def readable_date(self, date):
+        if len(date) == 8:
+            day = date[6:8]
+            month = date[4:6]
+            year = date[0:4]
+
+            return day + '/' + month + '/' + year
+        else:
+            return 'incorrect date format'
+
+    # set the coloured square for the team member
+    def set_contact(self, window, contact, x, y):   
+        if contact.lower() == 'kurt':
+            square = Label(window, bg = '#4CE020', width = 1)
+        elif contact.lower() == 'vanessa':
+            square = Label(window, bg = '#A331DC', width = 1)
+        elif contact.lower() == 'di':
+            square = Label(window, bg = '#e9f026', width = 1)
+        elif contact.lower() == 'sophie':
+            square = Label(window, bg = '#f21be7', width = 1)
+        elif contact.lower() == 'workshop':
+            square = Label(window, bg = '#247ef2', width = 1)
+        elif contact.lower() == 'service':
+            square = Label(window, bg = '#1bd5f2', width = 1)
+        else:
+            square = Label(window, bg = '#DF4027', width = 1)
+
+        square.config(font =("Courier", 5))
+        square.place(x = x, y = y)
+
+    # create the add note window as it is unique to other windows
+    def add_note(self, name, ws, wb):
+        new_window = Toplevel()
+        new_window.title("Add Note")
+        new_window.geometry("300x110")
+
+        note_label = Label(new_window, text = "Note:")
+        note_label.config(font =("Courier", 15))
+        note_label.place(x = 20, y = 10)
+
+        note_entry = Entry(new_window, width = 42)
+        note_entry.place(x = 20, y = 40)
+
+        submit_button = Button(new_window, width = 10, bg='#e1e5eb', text='Save', command = lambda: self.save_note(note_entry.get(), name, ws, wb, new_window))
+        submit_button.place(x = 197, y = 67)
+
+        self.window.center(new_window)
+
+    # save note to relevant row in calendar excel document
+    def save_note(self, note, name, ws, wb, new_window):
+        row = ws.max_row
+        
+        for i in range(1, row + 1):
+            if ws.cell(column=2, row=i).value == name:
+                ws.cell(column=4, row=i, value=note)
+                break
+
+        wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
+
+        new_window.destroy()
+        # reopen calendar to update note
+        self.cal_window.destroy()
+        self.open_calendar()
+        self.window.pop_up_window('Note saved successfully!', 'Confirmation')
+
+    # display note for relevant order
+    def view_note(self, name, ws):
+        print(name)
+        row = ws.max_row
+        
+        for i in range(1, row + 1):
+            if ws.cell(column=2, row=i).value == name:
+                note = ws.cell(column=4, row=i).value
+                break
+        
+        if note is None:
+            note = 'No note exists for this order.'
+
+        window.pop_up_window(note, 'Note')
+
+    # create edit contact window that allows for team members to be added/removed from orders
+    def edit_contact(self, name, ws, wb, type):
+        new_window = Toplevel()
+        
+        # alter the window based on whether the user is adding or removing a contact
+        if type == 'add':
+            new_window.title("Add Contact")
+            contact_label = Label(new_window, text="Add Contact:", font=FONT)
+            contact_label.place(x = 20, y = 10)
+        else:
+            new_window.title("Remove Contact")
+            contact_label = Label(new_window, text="Remove Contact:", font=FONT)
+            contact_label.place(x = 20, y = 10)
+
+        new_window.geometry("280x90")
+
+        # create drop down menu for team members
+        menu = StringVar(new_window)
+        menu.set('Vanessa')
+
+        drop_down = OptionMenu(new_window, menu, 'Vanessa', 'Kurt', 'Di', 'Sophie', 'Workshop', 'Service', 'Other')
+        drop_down.configure(bg='#e1e5eb')
+        drop_down.place(x = 20, y = 45)
+
+        if type == 'add':
+            submit_button = Button(new_window, width = 10, bg='#e1e5eb', text='Submit', command = lambda: self.save_contact(new_window, name, menu.get(), ws, wb))
+            submit_button.place(x = 177, y = 45)
+        else:
+            submit_button = Button(new_window, width = 10, bg='#e1e5eb', text='Submit', command = lambda: self.remove_contact(new_window, name, menu.get(), ws, wb))
+            submit_button.place(x = 177, y = 45)
+
+        self.window.center(new_window)
+        
+    # find the relevant customer and remove the team member from the order
+    def remove_contact(self, new_window, name, contact, ws, wb):
+        row = ws.max_row
+        lowered = contact.lower()
+        
+        # loop through names until customer found, check team member cells and set them to ' ' if they match the contact to be removed
+        for i in range(1, row + 1):
+            if ws.cell(column=2, row=i).value == name:
+                if ws.cell(column=5, row=i).value == lowered:
+                    self.edit_excel_contact(ws, wb, 5, i, ' ', new_window)
+                    return
+                elif ws.cell(column=6, row=i).value == lowered:
+                    self.edit_excel_contact(ws, wb, 6, i, ' ', new_window)
+                    return
+                elif ws.cell(column=7, row=i).value == lowered:
+                    self.edit_excel_contact(ws, wb, 7, i, ' ', new_window)
+                    return
+
+    # edit the relevant cell in the excel document and save it
+    def edit_excel_contact(self, ws, wb, col, row, value, new_window):
+        if value == ' ':
+            ws.cell(column=col, row=row, value=' ')
+        else:
+            ws.cell(column=col, row=row, value=value)
+
+        wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
+        new_window.destroy()
+        # reopen calendar to update contact
+        self.cal_window.destroy()
+        self.open_calendar()
+        self.window.pop_up_window('Team member edited successfully!', 'Confirmation')
+
+    # find the relevant customer and add the team member to the order, if full then display error message
+    def save_contact(self, new_window, name, contact, ws, wb):
+        row = ws.max_row
+        lowered = contact.lower()
+        
+        for i in range(1, row + 1):
+            if ws.cell(column=2, row=i).value == name:
+                if ws.cell(column=5, row=i).value == None or ws.cell(column=5, row=i).value == ' ':
+                    self.edit_excel_contact(ws, wb, 5, i, lowered, new_window)
+                    return
+                elif ws.cell(column=6, row=i).value == None or ws.cell(column=6, row=i).value == ' ':
+                    self.edit_excel_contact(ws, wb, 6, i, lowered, new_window)
+                    return
+                elif ws.cell(column=7, row=i).value == None or ws.cell(column=7, row=i).value == ' ':
+                    self.edit_excel_contact(ws, wb, 7, i, lowered, new_window)
+                    return
+                else:
+                    self.window.pop_up_window('This order already has three team members assigned!', 'Error')
+
+    def save_to_calendar(self, date, search_name, name, contact):
+        
+        if not os.path.exists(PATH + '\\Data\\Original\\calendar.xlsx'):
+            wb = Workbook()
+            wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
+            wb.close()
+
+        wb = load_workbook(PATH + '\\Data\\Original\\calendar.xlsx')
+        ws = wb['Sheet']
+        row = ws.max_row + 1
+        
+        ws.cell(column=1, row=row, value=date)
+        ws.cell(column=2, row=row, value=search_name)
+        ws.cell(column=3, row=row, value=name)
+        ws.cell(column=5, row=row, value=contact)
+
+        wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
+        wb.close()
+
+        # remove the order from the calendar when complete
+    def remove_order(self, window, name, ws, wb):
+        newWindow = Toplevel()
+        newWindow.title("Confirm Removal")
+        newWindow.geometry("655x110")
+
+        note_label = Label(newWindow, text = "Are you sure you want to remove this order from the calendar?")    
+        note_label.config(font =("Courier", 12))
+        note_label.place(x = 20, y = 10)
+
+        submit_button = Button(newWindow, width = 10, bg='#e1e5eb', text='Confirm', command = lambda: confirmRemoval(newWindow, window, name, ws, wb))
+        submit_button.place(x = 280, y = 67)
+
+        center(newWindow)
+
+    def confirmRemoval(newWindow, window, name, ws, wb):
+        rows = ws.max_row
+        
+        for i in range(1, rows + 1):
+            if ws.cell(column=2, row=i).value == name:
+                ws.delete_rows(i, 1)
+                wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
+                break
+
+        newWindow.destroy()
+        window.destroy()
+        openCalendar()
+
+    '''
+    def calenderPopUp(self):
+        newWindow = Toplevel()
+        newWindow.title("Added to Calendar")
+        newWindow.geometry("350x100")
+
+        note_label = Label(newWindow, text = 'Successfully added to calendar!')
+        note_label.config(font =("Courier", 12))
+        note_label.place(x = 20, y = 10)
+
+        close_button = Button(newWindow, width = 10, bg='#e1e5eb', text='Ok', command = lambda: newWindow.destroy())
+        close_button.place(x = 130, y = 57)
+
+        self.window.center(newWindow)
+
+
+    def upcomingDates():
+        window = Toplevel()
+        window.title("Upcoming Jobs")
+        window.geometry("595x300")
+        window.attributes('-topmost', 'true')
+        
+        # add a scrollbar to the window
+        main_frame = Frame(window, width=595, height=300)
+        main_frame.place(x=0,y=0)
+
+        my_canvas = Canvas(main_frame, width=595, height=300)
+        my_canvas.place(x=0,y=0)
+        
+
+        my_scrollbar = ttk.Scrollbar(main_frame, orient=VERTICAL, command=my_canvas.yview)
+        my_scrollbar.place(x=575, y=0, height=300)
+
+        my_canvas.configure(yscrollcommand=my_scrollbar.set)
+        my_canvas.bind('<Configure>', lambda e: my_canvas.configure(scrollregion = my_canvas.bbox("all")))
+        
+        def _on_mouse_wheel(event):
+            my_canvas.yview_scroll(-1 * int((event.delta / 120)), "units")
+        
+        my_canvas.bind_all("<MouseWheel>", _on_mouse_wheel)
+        
+        second_frame = Frame(my_canvas,width=595,height=100)
+        second_frame.place(x=0,y=0) 
+        
+        my_canvas.create_window((0,0), window=second_frame, anchor="nw")   
+        
+        if not os.path.exists(PATH + '\\Data\\Original\\calendar.xlsx'):
+            wb = Workbook()
+            wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
+            wb.close()
+
+        heading1 = Label(window, text = "Required in 1 day:")    
+        heading1.config(font =("Courier", 15))
+        heading1.place(x = 20, y = 10)
+
+        heading7 = Label(window, text = "Required in 7 days:")
+        heading7.config(font =("Courier", 15))
+        heading7.place(x = 310, y = 10)
+        
+        # get relevant information from excel file
+        wb = load_workbook(PATH + '\\Data\\Original\\calendar.xlsx')
+        ws = wb['Sheet']
+        rows = ws.max_row
+
+        offset1 = 0
+        offset7 = 0
+        day = date.today()
+        today = day.strftime("%d/%m/%Y")
+        
+        for i in range(1, rows + 1):
+            try:
+                req_date = cleanDate(ws.cell(column=1, row=i).value)
+                req_date2 = readableDate(req_date)
+                req_done = datetime.strptime(req_date2, "%d/%m/%Y")
+                day = datetime.strptime(today, "%d/%m/%Y")
+
+                diff = (req_done - day).days
+
+                if diff == 1:
+                    offset1 += 26
+                    addJob(window, ws, i, offset1, 20)
+                elif diff == 7:
+                    offset7 += 26
+                    addJob(window, ws, i, offset7, 310)
+            except:
+                pass
+
+        window.configure(height=100 + max(offset1, offset7))
+        center(window)
+
+    def addJob(window, ws, i, offset, x):
+        name = ws.cell(column=3, row=i).value
+        search_name = ws.cell(column=2, row=i).value
+
+        order_button = Button(window, width = 33, bg='#e1e5eb', text=name, command = lambda i=i: open_doc(search_name, name))
+        order_button.place(x = x, y = 20 + offset)
+        '''
 
 # class that generates fields for different job sheets
 class JobSheets:
@@ -586,14 +1118,14 @@ class CustomerDetails:
         self.cus_names = []
         self.customer_history = customer_history
         try:
-            wb = load_workbook(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+            wb = load_workbook(PATH + '\\Data\\Customer List\\GTC Customer List.xlsx')
             ws = wb['Sheet1']  
             name = ws['A']
             self.cus_names = [name[x].value for x in range(len(name))]
             del self.cus_names[0]
             wb.close()
         except:
-            window.error_message('Error! Customer List Not Found')
+            window.pop_up_window('Error! Customer List Not Found', 'Error')
         
         # create label for search entry
         self.search_image = PhotoImage(file=PATH + '\\Resources\\Images\\search_box.png')
@@ -650,7 +1182,7 @@ class CustomerDetails:
     def edit_customer(self):
         name = self.name_entry.get()
         if name not in self.cus_names:
-            window.error_message('Error! Customer does not exist')
+            window.pop_up_window('Error! Customer does not exist', 'Error')
         else:
             window.option_message(f'Are you sure you want to change {name} information to the entered details?', 'edit')
 
@@ -660,7 +1192,7 @@ class CustomerDetails:
         try:
             row = self.cus_names.index(name) + 2
 
-            wb = load_workbook(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+            wb = load_workbook(PATH + '\\Data\\Customer List\\GTC Customer List.xlsx')
             ws = wb['Sheet1']
 
             ws.cell(column=1, row=row, value=self.name_entry.get())
@@ -671,18 +1203,18 @@ class CustomerDetails:
             ws.cell(column=7, row=row, value=self.phone_entry.get())
             ws.cell(column=8, row=row, value=self.email_entry.get())
 
-            wb.save(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+            wb.save(PATH + '\\Data\\Customer List\\GTC Customer List.xlsx')
             wb.close()
-            window.confirm_message(f'{name} Information Updated')
+            window.pop_up_window(f'{name} Information Updated', 'Confirmation')
             self.clear_cus_entries()
         except:
-            window.error_message('Error! Customer List Not Found')
+            window.pop_up_window('Error! Customer List Not Found', 'Error')
 
     # creates the message and opens option window
     def delete_customer(self):
         name = self.name_entry.get()
         if name not in self.cus_names:
-            window.error_message('Error! Customer does not exist')
+            window.pop_up_window('Error! Customer does not exist', 'Error')
         else:
             window.option_message(f'Are you sure you want to delete {name} from the customer list?', 'delete')
 
@@ -692,32 +1224,32 @@ class CustomerDetails:
         try:
             row = self.cus_names.index(name) + 2
 
-            wb = load_workbook(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+            wb = load_workbook(PATH + '\\Data\\Customer List\\GTC Customer List.xlsx')
             ws = wb['Sheet1']
             ws.delete_rows(row, 1)
 
-            wb.save(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+            wb.save(PATH + '\\Data\\Customer List\\GTC Customer List.xlsx')
             wb.close()
 
             self.cus_names.remove(name)
 
-            window.confirm_message(f'Successfully deleted {name} from the customer list')
+            window.pop_up_window(f'Successfully deleted {name} from the customer list', 'Confirmation')
         except:
-            window.error_message('Error! Customer List Not Found')
+            window.pop_up_window('Error! Customer List Not Found', 'Error')
 
     # add customer to the excel doc and update the list of customer names
     def add_customer(self):
         # check if customer name already exists
         if self.name_entry.get() in self.cus_names:
-            window.error_message('Error! Customer already exists')
+            window.pop_up_window('Error! Customer already exists', 'Error')
         elif self.name_entry.get() == '':
-            window.error_message('Error! Name field cannot be empty')
+            window.pop_up_window('Error! Name field cannot be empty', 'Error')
         else:
             try:
                 name = self.name_entry.get()
                 
                 # add new customer to excel doc
-                wb = load_workbook(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+                wb = load_workbook(PATH + '\\Data\\Customer List\\GTC Customer List.xlsx')
                 ws = wb['Sheet1'] 
                 max_row = ws.max_row + 1
 
@@ -729,14 +1261,14 @@ class CustomerDetails:
                 ws.cell(column=7, row=max_row, value=self.phone_entry.get())
                 ws.cell(column=8, row=max_row, value=self.email_entry.get())
 
-                wb.save(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+                wb.save(PATH + '\\Data\\Customer List\\GTC Customer List.xlsx')
                 wb.close()
 
                 self.cus_names.append(name)
 
-                window.confirm_message(f'Successfully added {name} to the customer list')
+                window.pop_up_window(f'Successfully added {name} to the customer list', 'Confirmation')
             except:
-                window.error_message('Error! Customer List Not Found')
+                window.pop_up_window('Error! Customer List Not Found', 'Error')
     
     # clears all entry fields for customer data
     def clear_cus_entries(self):
@@ -792,7 +1324,7 @@ class CustomerDetails:
                 self.clear_cus_entries()
                 row = self.cus_names.index(entry_name) + 2
 
-                wb = load_workbook(PATH + '\\Resources\\Files\\GTC Customer List.xlsx')
+                wb = load_workbook(PATH + '\\Data\\Customer List\\GTC Customer List.xlsx')
                 ws = wb['Sheet1']  
                 # confirming there is a value in the cell, does not like empty cells
                 if ws.cell(row=row, column=1).value:
@@ -812,7 +1344,7 @@ class CustomerDetails:
 
                 wb.close()
             except:
-                window.error_message('Error! Customer List Not Found')
+                window.pop_up_window('Error! Customer List Not Found', 'Error')
 
             # when name selected also display previous orders
             self.customer_history.show_history(entry_name)
@@ -884,7 +1416,7 @@ class WordDoc:
         
         # ensure a sheet is opened before saving
         if sheet_type == '':
-            window.error_message('Error! Please open a sheet before saving')
+            window.pop_up_window('Error! Please open a sheet before saving', 'Error')
         else:
             document = Document()
             
@@ -1102,15 +1634,12 @@ class WordDoc:
             font.size = Pt(14)
             f3.bold = True
             
-            #saveToCalendar(required_by_entry.get(), use_this_name, name_entry.get(), contact_entry.get().lower())
+            unique_name = self.create_name(name)
 
             # check if signature has been created, if not give error message to confirm sheet has been signed
             try:
                 document.add_picture(PATH + '\\Resources\\signature.png', width = Cm(5))
                 try:
-                    name = self.cus_details.name_entry.get()
-                    unique_name = self.create_name(name)
-                    
                     if name == '\n':
                         name == 'No name entered'
                     
@@ -1131,12 +1660,13 @@ class WordDoc:
 
                     self.save_data(name, unique_name)
                     self.open_doc(unique_name, name)
+                    Calendar.save_to_calendar(self, self.sheet.req_entry.get(), unique_name, name, self.sheet.team_entry.get().lower())
                 except:
-                    window.error_message('Error! Could not save file')
+                    window.pop_up_window('Error! Could not save file', 'Error')
                 
                 os.remove(PATH + '\\Resources\\signature.png')    
             except:
-                window.error_message('Error! Please confirm signature')
+                window.pop_up_window('Error! Please confirm signature', 'Error')
                 
     # open the requested document given the customers name and unique name    
     def open_doc(self, doc_name, folder_name):
@@ -1144,15 +1674,15 @@ class WordDoc:
             try:
                 os.startfile(PATH + '\\1. Job Sheets\\Trophy Jobsheets\\' + folder_name + '\\' + doc_name + '.docx')
             except:
-                window.error_message('Error! File could not be found')
+                window.pop_up_window('Error! File could not be found', 'Error')
                       
         elif doc_name[0] == 'E':
             try:
                 os.startfile(PATH + '\\1. Job Sheets\\Engraving Jobsheets\\' + folder_name + '\\' + doc_name + '.docx')
             except:
-                window.error_message('Error! File could not be found')
+                window.pop_up_window('Error! File could not be found', 'Error')
         else:
-            window.error_message('Error! File must start with a T or E')
+            window.pop_up_window('Error! File must start with a T or E', 'Error')
     
     # create a unique name that contains the sheet type, date, customer name and a random 3 digit code
     def create_name(self, name): 
@@ -1221,7 +1751,7 @@ class WordDoc:
             auto_f.save(PATH + '\\Data\\Autofill\\' + name + '\\autofill_data.xlsx')
             auto_f.close()
         except:
-            window.error_message('Error! No autofill data file found')
+            window.pop_up_window('Error! No autofill data file found', 'Error')
 
     # autofill the data from the excel doc
     def autofill(self, unique_name, name):
@@ -1261,7 +1791,7 @@ class WordDoc:
                         self.check_none_text(pos+5, self.sheet.total_entries[i])
                     pos += 6
             except:
-                window.error_message('Error! You must select a sheet before autofilling')
+                window.pop_up_window('Error! You must select a sheet before autofilling', 'Error')
     
     # check that values aren't none to avoid errors
     def check_none_entry(self, position, field):
