@@ -25,9 +25,9 @@ class Window:
         self.signature = Signature(frame)
         self.sheet = JobSheets(frame, master)
         self.word_doc = WordDoc(self.sheet)
-        self.cus_history = CustomerHistory(frame, self.word_doc)
-        self.cus_search = CustomerDetails(frame, self, self.cus_history, self.word_doc)
         self.calendar = Calendar(frame, self, self.word_doc)
+        self.cus_history = CustomerHistory(frame, self.word_doc, self.calendar)
+        self.cus_search = CustomerDetails(frame, self, self.cus_history, self.word_doc)
 
         # create heading
         self.heading = PhotoImage(file=PATH + '\\Resources\\Images\\heading_image.png')
@@ -75,7 +75,7 @@ class Window:
         # create an ok button as another way to close the window when clicked
         self.button_image = PhotoImage(file=PATH + '\\Resources\\Images\\button_ok.png')
         self.ok_button = Button(self.new_window, image=self.button_image, command=self.new_window.destroy, border=0, bg='white', highlightthickness=0)
-        self.ok_button.grid(row=1, column=0, columnspan=2, padx=10, pady=(5, 15), sticky=N)
+        self.ok_button.grid(row=1, column=0, columnspan=2, padx=(30, 30), pady=(5, 15), sticky=N)
 
         self.new_window.attributes('-topmost', 'true')
         self.center(self.new_window)
@@ -96,6 +96,7 @@ class Window:
             self.ok_button = Button(self.option, image=self.button_ok, command=lambda:(self.cus_search.del_cus(), self.option.destroy()), border=0, bg='white', highlightthickness=0)
         elif function == 'edit':
             self.ok_button = Button(self.option, image=self.button_ok, command=lambda:(self.cus_search.edit_cus(), self.option.destroy()), border=0, bg='white', highlightthickness=0)
+
         self.ok_button.grid(row=1, column=0, padx=(0,10), pady=(5, 15), sticky=E)
 
         self.button_cancel = PhotoImage(file=PATH + '\\Resources\\Images\\button_cancel.png')
@@ -125,6 +126,17 @@ class Calendar:
         self.frame = frame
         self.window = window
         self.word_doc = word_doc
+        self.button_ok = PhotoImage(file=PATH + '\\Resources\\Images\\button_ok.png')
+        self.button_cancel = PhotoImage(file=PATH + '\\Resources\\Images\\button_cancel.png')
+        self.entry_image36 = PhotoImage(file=PATH + '\\Resources\\Images\\entry_36.png')
+        self.add_contact_image = PhotoImage(file=PATH + '\\Resources\\Images\\add_contact.png')
+        self.remove_contact_image = PhotoImage(file=PATH + '\\Resources\\Images\\remove_contact.png')
+        self.change_date_image = PhotoImage(file=PATH + '\\Resources\\Images\\change_date.png')
+        self.complete_image = PhotoImage(file=PATH + '\\Resources\\Images\\complete.png')
+        self.order_background = PhotoImage(file=PATH + '\\Resources\\Images\\order_background.png')
+        self.add_note_image = PhotoImage(file=PATH + '\\Resources\\Images\\add_note.png')
+        self.note_empty_image = PhotoImage(file=PATH + '\\Resources\\Images\\note_empty.png')
+        self.note_image = PhotoImage(file=PATH + '\\Resources\\Images\\note.png')
 
         # button that creates the trophy sheet entries/labels
         self.cal_image = PhotoImage(file=PATH + '\\Resources\\Images\\calendar_button.png')
@@ -135,21 +147,21 @@ class Calendar:
     def open_calendar(self):        
         self.cal_window = Toplevel()
         height = 500
-        width = 900
+        width = 910
         self.cal_window.title("Calendar")
-        self.cal_window.geometry('900x500')
+        self.cal_window.geometry('910x500')
         self.cal_window.configure(background='white')
         self.cal_window.iconbitmap(PATH + '\\Resources\\Images\\logo.ico')
 
         # add a scrollbar to the window
-        main_frame = Frame(self.cal_window, width=width, height=height)
+        main_frame = Frame(self.cal_window, width=width, height=height, bg='white')
         main_frame.place(x=0,y=0)
 
-        my_canvas = Canvas(main_frame, width=width, height=height)
+        my_canvas = Canvas(main_frame, width=width, height=height, bg='white')
         my_canvas.place(x=0,y=0)
         
         my_scrollbar = ttk.Scrollbar(main_frame, orient=VERTICAL, command=my_canvas.yview)
-        my_scrollbar.place(x=880, y=0, height=height)
+        my_scrollbar.place(x=width-18, y=0, height=height)
 
         my_canvas.configure(yscrollcommand=my_scrollbar.set)
         my_canvas.bind('<Configure>', lambda e: my_canvas.configure(scrollregion = my_canvas.bbox("all")))
@@ -159,7 +171,7 @@ class Calendar:
         
         my_canvas.bind_all("<MouseWheel>", _on_mouse_wheel)
         
-        self.second_frame = Frame(my_canvas,width=width,height=135)
+        self.second_frame = Frame(my_canvas,width=width,height=135, bg='white')
         self.second_frame.place(x=0,y=0) 
         
         my_canvas.create_window((0,0), window=self.second_frame, anchor="nw")
@@ -212,53 +224,57 @@ class Calendar:
         try:
             date_fixed, search_name1, name1, contact1x, contact2x, contact3x, notes1 = (list(t) for t in zip(*sorted(zip(date_fixed, search_name1, name1, contact1x, contact2x, contact3x, notes1))))
         except:
-            self.window.pop_up_window('Error! No calendar information available', 'Error')
+            print('error sorting lists')
 
         # format calendar display
-        calendar_heading = Label(self.second_frame, text = 'Calendar')
-        calendar_heading.config(font =("Courier bold", 18))
+        calendar_heading = Label(self.second_frame, text = 'Calendar', font=('Google Sans', 18, 'bold'), bg='white')
         calendar_heading.place(x = 20, y = 10)
 
         if len(date_fixed) != 0:
             # figure out if there is a required by date in order to place the heading
             if date_fixed[0] == '00000000' or self.readable_date(date_fixed[0]) == 'incorrect date format':
-                heading = Label(self.second_frame, text = 'No Required by Date')
-                heading.config(font =("Courier", 15))
+                heading = Label(self.second_frame, text = 'No Required by Date', font=('Google Sans', 15), bg='white')
                 heading.place(x = 20, y = 70)
             else:
-                heading = Label(self.second_frame, text = self.readable_date(date_fixed[0]))
-                heading.config(font =("Courier", 15))
+                heading = Label(self.second_frame, text = self.readable_date(date_fixed[0]), font=('Google Sans', 15), bg='white')
                 heading.place(x = 20, y = 70)
 
         position = 0
 
         # loop through all orders in the calendar and display them along with the buttons for functionality
         for i in range(len(date_fixed)):
-            order_button = Button(self.second_frame, width = 33, bg='#e1e5eb', text=name1[i], command = lambda i=i: self.word_doc.open_doc(search_name1[i], name1[i]))
-            order_button.place(x = 70, y = 96 + (i * 26) + position)
+            self.search_name = search_name1[i]
+            
+            # create all relevant buttons
+            # to edit the text of a button it can't be an image so create a button with no image and a button with an image behind it
+            order_button = Button(self.second_frame, image=self.order_background, command = lambda i=i: self.word_doc.open_doc(search_name1[i], name1[i]), bg='white', highlightthickness=0, border=0)
+            order_button2 = Button(self.second_frame, width = 29, bg='#6fa8dc', text=name1[i], command = lambda i=i: self.word_doc.open_doc(search_name1[i], name1[i]), highlightthickness=0, border=0, 
+                                    fg='white', font=('OpenSans', 9, 'bold'), activebackground='#6fa8dc')
+            order_button.place(x = 70, y = 99 + (i * 26) + position)
+            order_button2.place(x = 80, y = 100 + (i * 26) + position)
             
             # if there is a note attached to the order change the colour of the button to indicate there is a note
             if notes1[i] != None:
-                notes = Button(self.second_frame, width = 10, bg='#B3B7BC', text='Notes', command = lambda i=i: self.view_note(search_name1[i], ws))
+                notes = Button(self.second_frame, image=self.note_image, command = lambda i=i: self.view_note(search_name1[i], ws), bg='white', highlightthickness=0, border=0)
             else:
-                notes = Button(self.second_frame, width = 10, bg='#e1e5eb', text='Notes', command = lambda i=i: self.view_note(search_name1[i], ws))
+                notes = Button(self.second_frame, image=self.note_empty_image, command = lambda i=i: self.view_note(search_name1[i], ws), bg='white', highlightthickness=0, border=0)
             
-            notes.place(x = 320, y = 96 + (i * 26) + position)
+            notes.place(x = 389, y = 99 + (i * 26) + position)
 
-            add_note = Button(self.second_frame, width = 10, bg='#e1e5eb', text='Add Note', command = lambda i=i: self.add_note(search_name1[i], ws, wb))
-            add_note.place(x = 400, y = 96 + (i * 26) + position)
+            add_note = Button(self.second_frame, image=self.add_note_image, command = lambda i=i: self.entry_window(search_name1[i], name1[i], ws, wb, 'note'), bg='white', highlightthickness=0, border=0)
+            add_note.place(x = 308, y = 99 + (i * 26) + position)
 
-            add_contact = Button(self.second_frame, width = 10, bg='#e1e5eb', text='Add Contact', command = lambda i=i: self.edit_contact(search_name1[i], ws, wb, 'add'))
-            add_contact.place(x = 490, y = 96 + (i * 26) + position)
+            add_contact = Button(self.second_frame, image=self.add_contact_image, command = lambda i=i: self.edit_contact(search_name1[i], ws, wb, 'add'), bg='white', highlightthickness=0, border=0)
+            add_contact.place(x = 479, y = 99 + (i * 26) + position)
 
-            remove_contact = Button(self.second_frame, width = 13, bg='#e1e5eb', text='Remove Contact', command = lambda i=i: self.edit_contact(search_name1[i], ws, wb, 'remove'))
-            remove_contact.place(x = 570, y = 96 + (i * 26) + position)
+            remove_contact = Button(self.second_frame, image=self.remove_contact_image, command = lambda i=i: self.edit_contact(search_name1[i], ws, wb, 'remove'), bg='white', highlightthickness=0, border=0)
+            remove_contact.place(x = 573, y = 99 + (i * 26) + position)
 
-            change_date = Button(self.second_frame, width = 10, bg='#e1e5eb', text='Change Date', command = lambda i=i: self.change_date(search_name1[i], name1[i], ws, wb))
-            change_date.place(x = 680, y = 96 + (i * 26) + position)
+            change_date = Button(self.second_frame, image=self.change_date_image, command = lambda i=i: self.entry_window(search_name1[i], name1[i], ws, wb, 'date'), bg='white', highlightthickness=0, border=0)
+            change_date.place(x = 675, y = 99 + (i * 26) + position)
             
-            complete_button = Button(self.second_frame, width = 10, bg='#e1e5eb', text='Complete', command = lambda i=i: removeOrder(new_window, search_name1[i], ws, wb))
-            complete_button.place(x = 770, y = 96 + (i * 26) + position)
+            complete_button = Button(self.second_frame, image=self.complete_image, command = lambda i=i: self.confirm_remove(search_name1[i], ws, wb), bg='white', highlightthickness=0, border=0)
+            complete_button.place(x = 777, y = 99 + (i * 26) + position)
             
             # determine if a team member is assigned to the order, if so display thier colour next to the order
             if contact1x[i] != None and contact1x[i] != ' ':
@@ -273,8 +289,7 @@ class Calendar:
             
             # check if the next order has a different date, if so display the new date, otherwise keep it under the same heading
             if i != len(date_fixed) - 1 and date_fixed[i] != date_fixed[i + 1] and self.readable_date(date_fixed[i + 1]) != 'incorrect date format':
-                heading = Label(self.second_frame, text = self.readable_date(date_fixed[i + 1]))
-                heading.config(font =("Courier", 15))
+                heading = Label(self.second_frame, text = self.readable_date(date_fixed[i + 1]), font=('Google Sans', 15), bg='white')
                 position += 35
                 heading.place(x = 20, y = 96 + (i * 26) + position)
                 self.second_frame.configure(height=135 + (i * 26) + position)
@@ -328,22 +343,36 @@ class Calendar:
         self.cal_window.destroy()
         self.open_calendar()
         self.window.pop_up_window('Successfully changed the required by date', 'Confirmation')
-    
-    # create window to change the required by date of a selected order
-    def change_date(self, search_name, name, ws, wb):
+
+    # handles that add note and change date buttons (things that require an entry field)
+    def entry_window(self, search_name, name, ws, wb, action):
         new_window = Toplevel()
-        new_window.title("Change Date")
-        new_window.geometry("460x110")
+        new_window.geometry('')
+        new_window.configure(background='white')
+        new_window.iconbitmap(PATH + '\\Resources\\Images\\logo.ico')
 
-        date_label = Label(new_window, text = "New Required By Date (DD/MM/YYYY):", font=FONT)
-        date_label.place(x = 20, y = 10)
+        # create widgets
+        if action == 'note':
+            new_window.title("Add Note")
+            label = Label(new_window, text = 'Note:', font=FONT, bg='white')
+            submit_button = Button(new_window, image=self.button_ok, command=lambda:self.save_note(entry_field.get(), search_name, ws, wb, new_window), border=0, bg='white', highlightthickness=0)
+        else:
+            new_window.title("Change Date")
+            label = Label(new_window, text = 'New Required by Date (DD/MM/YYYY):', font=FONT, bg='white')
+            submit_button = Button(new_window, image=self.button_ok, command=lambda:self.submit_date(new_window, search_name, name, entry_field.get(), ws, wb), border=0, bg='white', highlightthickness=0)
+        
+        entry_label = Label(new_window, image=self.entry_image36, border=0)
+        entry_field = Entry(new_window, width=36, border=0, font=FONT, fg=ENTRY_COLOUR, bg='white', highlightthickness=0)
+        cancel_button = Button(new_window, image=self.button_cancel, command=lambda:new_window.destroy(), border=0, bg='white', highlightthickness=0)
+        
+        # place all fields
+        entry_label.grid(row=1, column=0, padx=(20, 20), pady=(0,15), sticky=NW, columnspan=2)
+        label.grid(row=0, column=0, padx=(25, 15), pady=(15,5), columnspan=2, sticky=W)
+        entry_field.grid(row=1, column=0, padx=(25, 25), pady=(6,15), columnspan=2, sticky=NW)
+        submit_button.grid(row=2, column=0, padx=(30,10), pady=(5, 15), sticky=E)
+        cancel_button.grid(row=2, column=1, padx=(10,30), pady=(5, 15), sticky=W)
 
-        date_entry = Entry(new_window, width = 25)
-        date_entry.place(x = 145, y = 40)
-
-        submit_button = Button(new_window, width = 10, bg='#e1e5eb', text='Submit', command = lambda: self.submit_date(new_window, search_name, name, date_entry.get(), ws, wb))
-        submit_button.place(x = 185, y = 70)
-
+        new_window.attributes('-topmost', 'true')
         self.window.center(new_window)
     
     # clean up the date for easy sorting
@@ -398,24 +427,6 @@ class Calendar:
         square.config(font =("Courier", 5))
         square.place(x = x, y = y)
 
-    # create the add note window as it is unique to other windows
-    def add_note(self, name, ws, wb):
-        new_window = Toplevel()
-        new_window.title("Add Note")
-        new_window.geometry("300x110")
-
-        note_label = Label(new_window, text = "Note:")
-        note_label.config(font =("Courier", 15))
-        note_label.place(x = 20, y = 10)
-
-        note_entry = Entry(new_window, width = 42)
-        note_entry.place(x = 20, y = 40)
-
-        submit_button = Button(new_window, width = 10, bg='#e1e5eb', text='Save', command = lambda: self.save_note(note_entry.get(), name, ws, wb, new_window))
-        submit_button.place(x = 197, y = 67)
-
-        self.window.center(new_window)
-
     # save note to relevant row in calendar excel document
     def save_note(self, note, name, ws, wb, new_window):
         row = ws.max_row
@@ -435,7 +446,6 @@ class Calendar:
 
     # display note for relevant order
     def view_note(self, name, ws):
-        print(name)
         row = ws.max_row
         
         for i in range(1, row + 1):
@@ -451,35 +461,41 @@ class Calendar:
     # create edit contact window that allows for team members to be added/removed from orders
     def edit_contact(self, name, ws, wb, type):
         new_window = Toplevel()
-        
+        new_window.geometry('')
+        new_window.configure(background='white')
+        new_window.iconbitmap(PATH + '\\Resources\\Images\\logo.ico')
+
         # alter the window based on whether the user is adding or removing a contact
         if type == 'add':
             new_window.title("Add Contact")
-            contact_label = Label(new_window, text="Add Contact:", font=FONT)
-            contact_label.place(x = 20, y = 10)
+            contact_label = Label(new_window, text="Add Contact:", font=FONT, bg='white')
+            contact_label.grid(row=0, column=0, padx=(15, 15), pady=(15, 0), columnspan=2, sticky=W)
         else:
             new_window.title("Remove Contact")
-            contact_label = Label(new_window, text="Remove Contact:", font=FONT)
-            contact_label.place(x = 20, y = 10)
-
-        new_window.geometry("280x90")
+            contact_label = Label(new_window, text="Remove Contact:", font=FONT, bg='white')
+            contact_label.grid(row=0, column=0, padx=(15, 15), pady=(15, 0), columnspan=2, sticky=W)
 
         # create drop down menu for team members
         menu = StringVar(new_window)
         menu.set('Vanessa')
 
         drop_down = OptionMenu(new_window, menu, 'Vanessa', 'Kurt', 'Di', 'Sophie', 'Workshop', 'Service', 'Other')
-        drop_down.configure(bg='#e1e5eb')
-        drop_down.place(x = 20, y = 45)
+        drop_down.configure(bg='white', font=FONT, border=0, highlightthickness=0)
+        drop_down.grid(row=1, column=0, padx=15, pady=(10, 15), sticky=W, columnspan=2)
 
         if type == 'add':
-            submit_button = Button(new_window, width = 10, bg='#e1e5eb', text='Submit', command = lambda: self.save_contact(new_window, name, menu.get(), ws, wb))
-            submit_button.place(x = 177, y = 45)
+            submit_button = Button(new_window, image=self.button_ok, command=lambda:self.save_contact(new_window, name, menu.get(), ws, wb), border=0, bg='white', highlightthickness=0)
+            submit_button.grid(row=2, column=0, padx=(30,10), pady=(5, 15), sticky=E)
         else:
-            submit_button = Button(new_window, width = 10, bg='#e1e5eb', text='Submit', command = lambda: self.remove_contact(new_window, name, menu.get(), ws, wb))
-            submit_button.place(x = 177, y = 45)
+            submit_button = Button(new_window, image=self.button_ok, command=lambda:self.remove_contact(new_window, name, menu.get(), ws, wb), border=0, bg='white', highlightthickness=0)
+            submit_button.grid(row=2, column=0, padx=(30,10), pady=(5, 15), sticky=E)
 
+        cancel_button = Button(new_window, image=self.button_cancel, command=lambda:new_window.destroy(), border=0, bg='white', highlightthickness=0)
+        cancel_button.grid(row=2, column=1, padx=(10,30), pady=(5, 15), sticky=W)
+
+        new_window.attributes('-topmost', 'true')
         self.window.center(new_window)
+
         
     # find the relevant customer and remove the team member from the order
     def remove_contact(self, new_window, name, contact, ws, wb):
@@ -532,8 +548,8 @@ class Calendar:
                 else:
                     self.window.pop_up_window('This order already has three team members assigned!', 'Error')
 
-    def save_to_calendar(self, date, search_name, name, contact):
-        
+    # save relevant details of the order to the calendar excel doc
+    def save_to_calendar(self, date, search_name, name, contact, location=''):       
         if not os.path.exists(PATH + '\\Data\\Original\\calendar.xlsx'):
             wb = Workbook()
             wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
@@ -546,53 +562,48 @@ class Calendar:
         ws.cell(column=1, row=row, value=date)
         ws.cell(column=2, row=row, value=search_name)
         ws.cell(column=3, row=row, value=name)
-        ws.cell(column=5, row=row, value=contact)
+        ws.cell(column=5, row=row, value=contact.lower())
 
         wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
         wb.close()
 
-        # remove the order from the calendar when complete
-    def remove_order(self, window, name, ws, wb):
-        newWindow = Toplevel()
-        newWindow.title("Confirm Removal")
-        newWindow.geometry("655x110")
+        # if the order is being added from the history page then display a confirmation message
+        if location == 'history':
+            self.window.pop_up_window('Order added to calendar successfully!', 'Confirmation')
 
-        note_label = Label(newWindow, text = "Are you sure you want to remove this order from the calendar?")    
-        note_label.config(font =("Courier", 12))
-        note_label.place(x = 20, y = 10)
-
-        submit_button = Button(newWindow, width = 10, bg='#e1e5eb', text='Confirm', command = lambda: confirmRemoval(newWindow, window, name, ws, wb))
-        submit_button.place(x = 280, y = 67)
-
-        center(newWindow)
-
-    def confirmRemoval(newWindow, window, name, ws, wb):
+    # remove the order from the calendar when complete       
+    def remove_order(self, name, ws, wb):
         rows = ws.max_row
-        
-        for i in range(1, rows + 1):
+        for i in range(2, rows + 1):
             if ws.cell(column=2, row=i).value == name:
                 ws.delete_rows(i, 1)
                 wb.save(PATH + '\\Data\\Original\\calendar.xlsx')
                 break
 
-        newWindow.destroy()
-        window.destroy()
-        openCalendar()
+        self.cal_window.destroy()
+        self.open_calendar()
+
+    # get confirmation to remove the order from calendar
+    def confirm_remove(self, name, ws, wb):
+        new_window = Toplevel()
+        new_window.title("Confirm Removal")
+        new_window.geometry('')
+        new_window.configure(background='white')
+        new_window.iconbitmap(PATH + '\\Resources\\Images\\logo.ico')
+
+        note_label = Label(new_window, text='Are you sure you want to remove this order from the calendar?', font=FONT, bg='white')
+        note_label.grid(row=0, column=0, padx=(15, 15), pady=15, columnspan=2, sticky=W)
+
+        ok_button = Button(new_window, image=self.button_ok, command=lambda:(self.remove_order(name, ws, wb), new_window.destroy()), border=0, bg='white', highlightthickness=0)
+        ok_button.grid(row=1, column=0, padx=(0,10), pady=(5, 15), sticky=E)
+
+        cancel_button = Button(new_window, image=self.button_cancel, command=lambda:new_window.destroy(), border=0, bg='white', highlightthickness=0)
+        cancel_button.grid(row=1, column=1, padx=(10,0), pady=(5, 15), sticky=W)
+
+        new_window.attributes('-topmost', 'true')
+        self.window.center(new_window)
 
     '''
-    def calenderPopUp(self):
-        newWindow = Toplevel()
-        newWindow.title("Added to Calendar")
-        newWindow.geometry("350x100")
-
-        note_label = Label(newWindow, text = 'Successfully added to calendar!')
-        note_label.config(font =("Courier", 12))
-        note_label.place(x = 20, y = 10)
-
-        close_button = Button(newWindow, width = 10, bg='#e1e5eb', text='Ok', command = lambda: newWindow.destroy())
-        close_button.place(x = 130, y = 57)
-
-        self.window.center(newWindow)
 
 
     def upcomingDates():
@@ -1019,8 +1030,9 @@ class Signature:
 
 # class that handles display and saving of previous customer orders, including autofill
 class CustomerHistory:
-    def __init__(self, frame, word_doc):
+    def __init__(self, frame, word_doc, calendar):
         self.word_doc = word_doc
+        self.calendar = calendar
         self.frame = frame
         self.cus_labels = []
         self.cus_sheets = []
@@ -1041,6 +1053,8 @@ class CustomerHistory:
         self.cus_sheets = []
         self.cus_autofill = []
         self.cus_calendar = []
+        self.req_date = []
+        self.contact = []
         # get customer history
         self.get_history()
         self.display_name()
@@ -1059,7 +1073,7 @@ class CustomerHistory:
             self.cus_autofill[i].grid(row=0, column=0, padx=(230,0), pady=(512 + (i * 25), 0), sticky=NW)
 
             # button to add order to calendar
-            self.cus_calendar.append(Button(self.frame, image=self.calendar_image, border=0, bg='white', highlightthickness=0, command=lambda:print('calendar')))
+            self.cus_calendar.append(Button(self.frame, image=self.calendar_image, border=0, bg='white', highlightthickness=0, command=lambda i=i:self.calendar.save_to_calendar(self.req_date[i], self.cus_history[i], self.name, self.contact[i], 'history')))
             self.cus_calendar[i].grid(row=0, column=0, padx=(285,0), pady=(512 + (i * 25), 0), sticky=NW)
 
     # remove previous customer history
@@ -1104,6 +1118,8 @@ class CustomerHistory:
                 pass
             else:
                 self.cus_history.append(auto_sheet.cell(row=current_row, column=1).value)
+                self.req_date.append(auto_sheet.cell(row=current_row, column=2).value)
+                self.contact.append(auto_sheet.cell(row=current_row, column=6).value)
         
         # save and close the file
         auto_f.save(PATH + '\\Data\\Autofill\\' + self.name + '\\autofill_data.xlsx')
